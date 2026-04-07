@@ -172,7 +172,10 @@ pub fn validate(subject: &str, opts: ValidatorOptions<'_>) -> ValidationResult {
         if parsed.description.len() > 100 {
             violations.push(Violation::err(
                 "length",
-                format!("description is {} chars (max 100)", parsed.description.len()),
+                format!(
+                    "description is {} chars (max 100)",
+                    parsed.description.len()
+                ),
             ));
         }
         if parsed.description.ends_with('.') {
