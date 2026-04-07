@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🐦 kagu — conventional commit auditor</title>
+  <meta name="description" content="kagu is a zero-config conventional commit auditor. Single Rust binary, no Node required. cargo install kagu and you're done." />
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://iamkorun.github.io/kagu/" />
+  <meta property="og:title" content="kagu — conventional commit auditor" />
+  <meta property="og:description" content="Zero-config conventional commit auditor. Single binary, no Node required. It screeches at bad commits so you don't have to." />
+  <meta property="og:image" content="https://iamkorun.github.io/kagu/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="kagu — conventional commit auditor" />
+  <meta name="twitter:description" content="Zero-config conventional commit auditor. Single binary, no Node required." />
+  <meta name="twitter:image" content="https://iamkorun.github.io/kagu/og-image.png" />
+  <!-- Canonical -->
+  <link rel="canonical" href="https://iamkorun.github.io/kagu/" />
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://api.fontshare.com" />
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800&f[]=jetbrains-mono@400,700&display=swap" rel="stylesheet" />
+  <!-- Tailwind CSS v3 (pinned) -->
+  <script src="https://cdn.tailwindcss.com/3.4.1"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Cabinet Grotesk', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            cream: '#FAF7F2',
+            charcoal: '#1C1A17',
+            'charcoal-light': '#2A2620',
+            sage: {
+              100: '#EAF0E8',
+              200: '#C9DACC',
+              400: '#7FAB87',
+              500: '#5E9168',
+              600: '#3D7248',
+            },
+            coral: {
+              100: '#FBEEE9',
+              400: '#E8836A',
+              500: '#D9644A',
+            },
+            stone: {
+              warm: '#8C8070',
+            }
+          },
+          animation: {
+            'bob': 'bob 3s ease-in-out infinite',
+            'fade-up': 'fadeUp 0.6s ease-out forwards',
+          },
+          keyframes: {
+            bob: {
+              '0%, 100%': { transform: 'translateY(0px)' },
+              '50%': { transform: 'translateY(-6px)' },
+            },
+            fadeUp: {
+              from: { opacity: '0', transform: 'translateY(16px)' },
+              to: { opacity: '1', transform: 'translateY(0)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Three.js import map (pinned version) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <style>
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Cabinet Grotesk', system-ui, sans-serif;
+      background-color: #FAF7F2;
+      color: #1C1A17;
+    }
+    .dark body {
+      background-color: #1C1A17;
+      color: #FAF7F2;
+    }
+    /* Force dark mode */
+    html { color-scheme: dark; }
+    body {
+      background-color: #1C1A17;
+      color: #FAF7F2;
+    }
+
+    #kagu-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: none;
+    }
+
+    .copy-btn:active { transform: scale(0.97); }
+
+    .terminal-block {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      line-height: 1.6;
+    }
+    .terminal-block .clean  { color: #7FAB87; }
+    .terminal-block .warn   { color: #D4A72C; }
+    .terminal-block .error  { color: #D9644A; }
+    .terminal-block .dim    { color: #6B6355; }
+    .terminal-block .bold   { font-weight: 700; }
+
+    .tab-btn[data-active="true"] {
+      background-color: #5E9168;
+      color: #FAF7F2;
+    }
+
+    /* Smooth scroll */
+    @media (prefers-reduced-motion: reduce) {
+      *, ::before, ::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* Mobile SVG mascot */
+    .kagu-svg-fallback { display: none; }
+    @media (max-width: 767px) {
+      .kagu-canvas-wrap { display: none; }
+      .kagu-svg-fallback { display: flex; }
+    }
+  </style>
+</head>
+
+<body class="min-h-[100dvh] antialiased">
+
+  <!-- ── NAV ─────────────────────────────────────────────────────── -->
+  <nav class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 backdrop-blur-sm bg-charcoal/80 border-b border-white/5">
+    <span class="font-display font-bold text-lg tracking-tight text-cream">kagu</span>
+    <div class="flex items-center gap-4">
+      <a href="https://github.com/iamkorun/kagu" target="_blank" rel="noopener"
+         class="text-sm text-stone-400 hover:text-cream transition-colors">
+        GitHub
+      </a>
+      <a href="https://github.com/iamkorun/kagu" target="_blank" rel="noopener"
+         class="flex items-center gap-1.5 text-xs bg-sage-600 hover:bg-sage-500 text-cream px-3 py-1.5 rounded-full transition-colors font-medium">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 16 16"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg>
+        Star
+      </a>
+    </div>
+  </nav>
+
+  <!-- ── HERO ──────────────────────────────────────────────────────── -->
+  <section class="min-h-[100dvh] pt-16 flex items-center">
+    <div class="max-w-7xl mx-auto px-6 w-full grid lg:grid-cols-[55%_45%] gap-12 items-center py-20">
+
+      <!-- Left: copy + CTA -->
+      <div class="space-y-8">
+        <div class="space-y-4">
+          <div class="inline-flex items-center gap-2 text-xs font-mono bg-sage-600/20 text-sage-400 border border-sage-600/30 rounded-full px-3 py-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-sage-400 animate-pulse"></span>
+            Zero config · Single binary · No Node
+          </div>
+
+          <h1 class="font-display font-extrabold text-5xl xl:text-7xl leading-[0.95] text-cream">
+            kagu screeches<br/>
+            <span class="text-sage-400">at bad commits.</span>
+          </h1>
+
+          <p class="text-lg text-stone-400 leading-relaxed max-w-md">
+            Conventional commit auditor for every git repo. Catches violations before they merge.
+            No Node.js, no config file, no hustle — just <code class="font-mono text-sage-400">cargo install kagu</code>.
+          </p>
+        </div>
+
+        <!-- Install block -->
+        <div class="space-y-2">
+          <p class="text-xs font-mono text-stone-500 uppercase tracking-widest">Install in 10 seconds</p>
+          <div class="flex items-center gap-3 bg-charcoal-light border border-white/10 rounded-xl px-4 py-3 max-w-sm">
+            <span class="font-mono text-sm text-cream flex-1">cargo install kagu</span>
+            <button id="copy-install"
+              onclick="copyInstall()"
+              class="copy-btn flex-shrink-0 text-stone-500 hover:text-sage-400 transition-colors"
+              aria-label="Copy install command">
+              <svg id="copy-icon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              <svg id="check-icon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- CTAs -->
+        <div class="flex flex-wrap gap-3">
+          <a href="#features"
+             class="inline-flex items-center gap-2 bg-sage-600 hover:bg-sage-500 text-cream font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-95">
+            See it call out bad commits
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+          </a>
+          <a href="https://github.com/iamkorun/kagu" target="_blank" rel="noopener"
+             class="inline-flex items-center gap-2 border border-white/15 hover:border-white/30 text-stone-300 hover:text-cream font-medium px-5 py-2.5 rounded-xl transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+            View on GitHub
+          </a>
+        </div>
+      </div>
+
+      <!-- Right: Three.js canvas (desktop) / SVG (mobile) -->
+      <div class="kagu-canvas-wrap relative flex items-center justify-center min-h-[420px] lg:min-h-[520px]">
+        <canvas id="kagu-canvas" width="480" height="520" aria-label="3D kagu bird mascot"></canvas>
+      </div>
+
+      <!-- Mobile SVG fallback -->
+      <div class="kagu-svg-fallback items-center justify-center py-8">
+        <svg viewBox="0 0 200 220" width="180" height="198" xmlns="http://www.w3.org/2000/svg" aria-label="kagu bird illustration">
+          <!-- Tail feathers -->
+          <ellipse cx="68" cy="148" rx="22" ry="8" fill="#8A9BA8" transform="rotate(-20 68 148)"/>
+          <ellipse cx="60" cy="152" rx="20" ry="7" fill="#7A8E9A" transform="rotate(-30 60 152)"/>
+          <!-- Body -->
+          <ellipse cx="110" cy="140" rx="45" ry="38" fill="#9BADB8"/>
+          <!-- Wing highlight -->
+          <ellipse cx="118" cy="138" rx="34" ry="26" fill="#ADBEC8"/>
+          <!-- Neck -->
+          <ellipse cx="122" cy="105" rx="18" ry="22" fill="#9BADB8"/>
+          <!-- Head -->
+          <circle cx="128" cy="86" r="26" fill="#ADBEC8"/>
+          <!-- Crest feathers (orange/coral tips) -->
+          <path d="M118 65 C112 42 105 22 100 10" stroke="#9BADB8" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <circle cx="99" cy="9" r="5" fill="#D9644A"/>
+          <path d="M122 63 C118 40 116 20 115 8" stroke="#9BADB8" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <circle cx="114" cy="7" r="5" fill="#E8836A"/>
+          <path d="M128 62 C126 39 127 19 128 7" stroke="#ADBEC8" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <circle cx="128" cy="5" r="6" fill="#D9644A"/>
+          <path d="M134 63 C134 40 136 20 140 8" stroke="#9BADB8" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <circle cx="141" cy="6" r="5" fill="#E8836A"/>
+          <path d="M140 65 C142 42 148 22 154 11" stroke="#8A9BA8" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <circle cx="155" cy="9" r="4.5" fill="#D9644A"/>
+          <!-- Eye -->
+          <circle cx="136" cy="82" r="7" fill="#2A2620"/>
+          <circle cx="136" cy="82" r="4" fill="#1C1A17"/>
+          <circle cx="138" cy="80" r="1.5" fill="#FAF7F2"/>
+          <!-- Beak -->
+          <path d="M148 88 L165 94 L148 98 Z" fill="#D9644A"/>
+          <!-- Legs -->
+          <line x1="100" y1="175" x2="96" y2="198" stroke="#D9644A" stroke-width="3" stroke-linecap="round"/>
+          <line x1="96" y1="198" x2="88" y2="204" stroke="#D9644A" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="96" y1="198" x2="100" y2="205" stroke="#D9644A" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="118" y1="176" x2="122" y2="200" stroke="#D9644A" stroke-width="3" stroke-linecap="round"/>
+          <line x1="122" y1="200" x2="114" y2="206" stroke="#D9644A" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="122" y1="200" x2="128" y2="206" stroke="#D9644A" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── DEMO OUTPUT ───────────────────────────────────────────────── -->
+  <section id="features" class="py-24 border-t border-white/5">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center mb-16 space-y-3">
+        <h2 class="font-display font-bold text-4xl text-cream">What kagu calls out</h2>
+        <p class="text-stone-400 max-w-md mx-auto">Run <code class="font-mono text-sage-400 text-sm">kagu scan</code> on any git repo. Every violation, scored and surfaced instantly.</p>
+      </div>
+
+      <div class="grid lg:grid-cols-2 gap-16 items-start">
+        <!-- Feature 1 - scan output -->
+        <div class="space-y-4">
+          <div class="space-y-1">
+            <h3 class="font-display font-bold text-2xl text-cream">Full history audit</h3>
+            <p class="text-stone-400">Scans your entire git log, scores it 0–100, and tells you exactly which commits broke the spec — and why.</p>
+          </div>
+          <div class="bg-charcoal-light rounded-xl p-5 terminal-block overflow-x-auto">
+            <div class="mb-2 text-stone-500 text-xs">$ kagu scan</div>
+            <div><span class="bold">kagu scan</span></div>
+            <div>&nbsp;</div>
+            <div>  <span class="error">✗</span> <span class="dim">a1b2c3d</span>  WIP stuff happening</div>
+            <div>      <span class="error">error</span> [format] subject does not match &#96;&lt;type&gt;(&lt;scope&gt;)?!?: &lt;description&gt;&#96;</div>
+            <div>  <span class="warn">!</span> <span class="dim">d4e5f67</span>  feat: add database connection.</div>
+            <div>      <span class="warn">warn </span> [punctuation] description should not end with &#96;.&#96;</div>
+            <div>  <span class="error">✗</span> <span class="dim">7890abc</span>  release the thing</div>
+            <div>      <span class="error">error</span> [format] subject does not match &#96;&lt;type&gt;(&lt;scope&gt;)?!?: &lt;description&gt;&#96;</div>
+            <div>&nbsp;</div>
+            <div><span class="bold">summary</span></div>
+            <div>  total: 24  <span class="clean">clean: 21</span>  <span class="warn">warnings: 1</span>  <span class="error">errors: 2</span>  <span class="dim">skipped: 1</span></div>
+            <div>  score: <span class="warn">87</span>/100</div>
+            <div>&nbsp;</div>
+            <div><span class="bold">types</span></div>
+            <div>  chore       4</div>
+            <div>  feat        9</div>
+            <div>  fix         5</div>
+            <div>  refactor    3</div>
+          </div>
+        </div>
+
+        <!-- Feature 2 - CI + authors -->
+        <div class="space-y-10">
+          <div class="space-y-4">
+            <div class="space-y-1">
+              <h3 class="font-display font-bold text-2xl text-cream">Branch-only CI scan</h3>
+              <p class="text-stone-400">Only audits new commits on your branch. Zero noise on old history. Fails CI with exit code 1 if anything is wrong.</p>
+            </div>
+            <div class="bg-charcoal-light rounded-xl p-5 terminal-block overflow-x-auto">
+              <div class="mb-2 text-stone-500 text-xs">$ kagu scan --since main --quiet</div>
+              <div><span class="dim"># exit 0 — all clean</span></div>
+              <div>&nbsp;</div>
+              <div class="mb-2 text-stone-500 text-xs">$ kagu scan --since origin/main</div>
+              <div><span class="bold">kagu scan</span></div>
+              <div>&nbsp;</div>
+              <div>  <span class="error">✗</span> <span class="dim">3fa9d12</span>  fix things</div>
+              <div>      <span class="error">error</span> [format] subject does not match ...</div>
+              <div>&nbsp;</div>
+              <div>  score: <span class="error">66</span>/100</div>
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <div class="space-y-1">
+              <h3 class="font-display font-bold text-2xl text-cream">Per-author breakdown</h3>
+              <p class="text-stone-400">Find out who needs a refresher. Useful for team retrospectives or onboarding audits.</p>
+            </div>
+            <div class="bg-charcoal-light rounded-xl p-5 terminal-block overflow-x-auto">
+              <div class="mb-2 text-stone-500 text-xs">$ kagu scan --authors</div>
+              <div><span class="bold">authors</span></div>
+              <div>  <span class="dim">author                     total  clean  errors  score</span></div>
+              <div>  alice@example.com             14     14       0  <span class="clean">100/100</span></div>
+              <div>  bob@example.com                8      6       2   <span class="warn">75/100</span></div>
+              <div>  carol@example.com              2      1       1   <span class="error">50/100</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature row 2 -->
+      <div class="grid lg:grid-cols-2 gap-16 items-start mt-20">
+        <!-- Feature 3 - Hook install -->
+        <div class="space-y-4">
+          <div class="space-y-1">
+            <h3 class="font-display font-bold text-2xl text-cream">One-command git hook</h3>
+            <p class="text-stone-400">Catches violations at commit time, not at PR review time. Won't clobber an existing hook.</p>
+          </div>
+          <div class="bg-charcoal-light rounded-xl p-5 terminal-block overflow-x-auto">
+            <div class="mb-2 text-stone-500 text-xs">$ kagu hook install</div>
+            <div>kagu: installed commit-msg hook at .git/hooks/commit-msg</div>
+            <div>&nbsp;</div>
+            <div class="mb-2 text-stone-500 text-xs"># Now try committing a bad message:</div>
+            <div class="mb-2 text-stone-500 text-xs">$ git commit -m "fix things"</div>
+            <div>kagu: commit message rejected</div>
+            <div>  <span class="error">error</span> [format] subject does not match &#96;&lt;type&gt;...&#96;</div>
+          </div>
+        </div>
+
+        <!-- Feature 4 - JSON output -->
+        <div class="space-y-4">
+          <div class="space-y-1">
+            <h3 class="font-display font-bold text-2xl text-cream">Machine-readable JSON</h3>
+            <p class="text-stone-400">Pipe into dashboards, scripts, or CI artifact reporters. Every violation structured and typed.</p>
+          </div>
+          <div class="bg-charcoal-light rounded-xl p-5 terminal-block overflow-x-auto">
+            <div class="mb-2 text-stone-500 text-xs">$ kagu scan --json | jq .summary</div>
+            <div>{</div>
+            <div>  "total": 24,</div>
+            <div>  "clean": <span class="clean">21</span>,</div>
+            <div>  "warnings": <span class="warn">1</span>,</div>
+            <div>  "errors": <span class="error">2</span>,</div>
+            <div>  "skipped": 1,</div>
+            <div>  "score": <span class="warn">87</span></div>
+            <div>}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── INSTALL TABS ───────────────────────────────────────────────── -->
+  <section class="py-24 border-t border-white/5 bg-charcoal-light/30">
+    <div class="max-w-2xl mx-auto px-6">
+      <h2 class="font-display font-bold text-4xl text-cream text-center mb-12">Install kagu</h2>
+
+      <!-- Tab buttons -->
+      <div role="tablist" class="flex gap-2 mb-6 flex-wrap">
+        <button role="tab" class="tab-btn text-sm font-mono px-4 py-2 rounded-lg border border-white/10 hover:border-sage-600/60 transition-colors text-stone-400" data-tab="cargo" data-active="true" onclick="switchTab('cargo')">cargo</button>
+        <button role="tab" class="tab-btn text-sm font-mono px-4 py-2 rounded-lg border border-white/10 hover:border-sage-600/60 transition-colors text-stone-400" data-tab="source" onclick="switchTab('source')">from source</button>
+        <button role="tab" class="tab-btn text-sm font-mono px-4 py-2 rounded-lg border border-white/10 hover:border-sage-600/60 transition-colors text-stone-400" data-tab="binary" onclick="switchTab('binary')">binary release</button>
+        <button role="tab" class="tab-btn text-sm font-mono px-4 py-2 rounded-lg border border-white/10 hover:border-sage-600/60 transition-colors text-stone-400" data-tab="git" onclick="switchTab('git')">from git</button>
+      </div>
+
+      <!-- Tab panels -->
+      <div class="bg-charcoal-light rounded-xl p-6 terminal-block">
+        <div id="tab-cargo" class="space-y-1">
+          <div class="text-stone-500 text-xs mb-3"># Requires Rust — install at rustup.rs</div>
+          <div>cargo install kagu</div>
+          <div>&nbsp;</div>
+          <div class="text-stone-500 text-xs"># Then run:</div>
+          <div>kagu scan</div>
+        </div>
+        <div id="tab-source" class="space-y-1 hidden">
+          <div>git clone https://github.com/iamkorun/kagu.git</div>
+          <div>cd kagu</div>
+          <div>cargo install --path .</div>
+        </div>
+        <div id="tab-binary" class="space-y-1 hidden">
+          <div class="text-stone-500 text-xs"># Download from GitHub Releases</div>
+          <div class="text-sage-400"># https://github.com/iamkorun/kagu/releases</div>
+          <div>&nbsp;</div>
+          <div class="text-stone-500 text-xs"># Linux example:</div>
+          <div>curl -LO https://github.com/iamkorun/kagu/releases/latest/download/kagu-x86_64-linux.tar.gz</div>
+          <div>tar -xzf kagu-x86_64-linux.tar.gz</div>
+          <div>sudo mv kagu /usr/local/bin/</div>
+        </div>
+        <div id="tab-git" class="space-y-1 hidden">
+          <div class="text-stone-500 text-xs"># Install directly from the git repo (no crates.io needed)</div>
+          <div>cargo install --git https://github.com/iamkorun/kagu</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── WHY KAGU ───────────────────────────────────────────────────── -->
+  <section class="py-24 border-t border-white/5">
+    <div class="max-w-7xl mx-auto px-6">
+      <h2 class="font-display font-bold text-4xl text-cream text-center mb-16">Why not the other tools?</h2>
+
+      <div class="overflow-x-auto">
+        <table class="w-full font-mono text-sm border-collapse">
+          <thead>
+            <tr class="border-b border-white/10">
+              <th class="text-left py-3 px-4 text-stone-400 font-medium">Tool</th>
+              <th class="text-left py-3 px-4 text-stone-400 font-medium">Runtime</th>
+              <th class="text-left py-3 px-4 text-stone-400 font-medium">Config needed</th>
+              <th class="text-left py-3 px-4 text-stone-400 font-medium">Scope</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-white/5">
+              <td class="py-3 px-4 text-stone-300">commitlint</td>
+              <td class="py-3 px-4 text-coral-400">Node.js required</td>
+              <td class="py-3 px-4 text-coral-400">Yes (husky + config file)</td>
+              <td class="py-3 px-4 text-stone-400">Audit only</td>
+            </tr>
+            <tr class="border-b border-white/5">
+              <td class="py-3 px-4 text-stone-300">cocogitto</td>
+              <td class="py-3 px-4 text-sage-400">Rust binary</td>
+              <td class="py-3 px-4 text-coral-400">Yes</td>
+              <td class="py-3 px-4 text-stone-400">Full release suite</td>
+            </tr>
+            <tr class="border-b border-white/5">
+              <td class="py-3 px-4 text-stone-300">gitlint</td>
+              <td class="py-3 px-4 text-coral-400">Python required</td>
+              <td class="py-3 px-4 text-coral-400">Yes</td>
+              <td class="py-3 px-4 text-stone-400">Audit only</td>
+            </tr>
+            <tr>
+              <td class="py-3 px-4 font-bold text-cream">🐦 kagu</td>
+              <td class="py-3 px-4 text-sage-400">None (single binary)</td>
+              <td class="py-3 px-4 text-sage-400">None</td>
+              <td class="py-3 px-4 text-stone-400">Audit + hook</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── FOOTER ─────────────────────────────────────────────────────── -->
+  <footer class="py-16 border-t border-white/5">
+    <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-6">
+      <div class="flex items-center gap-4">
+        <a href="https://github.com/iamkorun/kagu" target="_blank" rel="noopener"
+           class="flex items-center gap-2 text-sm text-stone-400 hover:text-cream transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          iamkorun/kagu
+        </a>
+        <span class="text-stone-600">·</span>
+        <a href="https://buymeacoffee.com/iamkorun" target="_blank" rel="noopener"
+           class="text-sm text-stone-400 hover:text-coral-400 transition-colors">
+          ☕ Buy Me a Coffee
+        </a>
+      </div>
+      <p class="text-stone-600 text-sm">
+        🐦 kagu · MIT · made by <a href="https://github.com/iamkorun" class="hover:text-stone-400 transition-colors">iamkorun</a>
+      </p>
+    </div>
+  </footer>
+
+  <!-- ── SCRIPTS ────────────────────────────────────────────────────── -->
+  <script>
+    // Copy install command
+    function copyInstall() {
+      navigator.clipboard.writeText('cargo install kagu').then(() => {
+        document.getElementById('copy-icon').classList.add('hidden');
+        document.getElementById('check-icon').classList.remove('hidden');
+        setTimeout(() => {
+          document.getElementById('copy-icon').classList.remove('hidden');
+          document.getElementById('check-icon').classList.add('hidden');
+        }, 2000);
+      });
+    }
+
+    // Tab switcher
+    function switchTab(tab) {
+      ['cargo', 'source', 'binary', 'git'].forEach(t => {
+        const panel = document.getElementById('tab-' + t);
+        const btn = document.querySelector('[data-tab="' + t + '"]');
+        if (t === tab) {
+          panel.classList.remove('hidden');
+          btn.dataset.active = 'true';
+        } else {
+          panel.classList.add('hidden');
+          btn.dataset.active = 'false';
+        }
+      });
+    }
+  </script>
+
+  <!-- Three.js kagu bird mascot (lazy-loaded via IntersectionObserver) -->
+  <script type="module">
+    const canvas = document.getElementById('kagu-canvas');
+    if (!canvas) { /* mobile, no canvas */ }
+    else {
+      // Only load Three.js when hero section is in view
+      const observer = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+          observer.disconnect();
+          initKagu();
+        }
+      }, { threshold: 0.1 });
+      observer.observe(canvas);
+
+      async function initKagu() {
+        const { default: THREE } = await import('three');
+
+        const renderer = new THREE.WebGLRenderer({
+          canvas,
+          antialias: true,
+          alpha: true,
+        });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+        renderer.setClearColor(0x000000, 0);
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(
+          45,
+          canvas.clientWidth / canvas.clientHeight,
+          0.1,
+          100
+        );
+        camera.position.set(0, 0.5, 5.5);
+
+        // ── Lights ──────────────────────────────────────────────────
+        const ambientLight = new THREE.AmbientLight(0xfaf7f2, 0.7);
+        scene.add(ambientLight);
+
+        const keyLight = new THREE.DirectionalLight(0xfaf7f2, 1.2);
+        keyLight.position.set(3, 4, 5);
+        scene.add(keyLight);
+
+        const fillLight = new THREE.DirectionalLight(0x7faa87, 0.4);
+        fillLight.position.set(-3, 1, 2);
+        scene.add(fillLight);
+
+        const rimLight = new THREE.DirectionalLight(0xe8836a, 0.3);
+        rimLight.position.set(0, -2, -3);
+        scene.add(rimLight);
+
+        // ── Materials ───────────────────────────────────────────────
+        const bodyMat = new THREE.MeshStandardMaterial({
+          color: 0x9BADB8,
+          roughness: 0.75,
+          metalness: 0.05,
+        });
+        const wingMat = new THREE.MeshStandardMaterial({
+          color: 0xADBEC8,
+          roughness: 0.7,
+          metalness: 0.05,
+        });
+        const beakMat = new THREE.MeshStandardMaterial({
+          color: 0xD9644A,
+          roughness: 0.6,
+          metalness: 0.1,
+        });
+        const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0x2A2620 });
+        const eyePupilMat = new THREE.MeshStandardMaterial({ color: 0x0D0B09 });
+        const eyeShine = new THREE.MeshStandardMaterial({ color: 0xffffff });
+        const crestBaseMat = new THREE.MeshStandardMaterial({
+          color: 0x8A9BA8,
+          roughness: 0.8,
+        });
+        const crestTipMat = new THREE.MeshStandardMaterial({
+          color: 0xD9644A,
+          roughness: 0.55,
+          metalness: 0.05,
+        });
+
+        // ── Helper functions ─────────────────────────────────────────
+        function makeSphere(r, mat, pos) {
+          const m = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), mat);
+          m.position.set(...pos);
+          return m;
+        }
+        function makeCylinder(rt, rb, h, mat, pos, rot) {
+          const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, 10), mat);
+          m.position.set(...pos);
+          if (rot) m.rotation.set(...rot);
+          return m;
+        }
+        function makeCone(r, h, mat, pos, rot) {
+          const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, 8), mat);
+          m.position.set(...pos);
+          if (rot) m.rotation.set(...rot);
+          return m;
+        }
+
+        // ── Build kagu bird ──────────────────────────────────────────
+        const kaguGroup = new THREE.Group();
+        scene.add(kaguGroup);
+
+        // Body (oval)
+        const bodyGeo = new THREE.SphereGeometry(1, 14, 10);
+        bodyGeo.scale(1, 0.85, 0.78);
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.set(0, 0, 0);
+        kaguGroup.add(body);
+
+        // Wing highlight (slightly smaller, lighter)
+        const wingGeo = new THREE.SphereGeometry(0.88, 12, 8);
+        wingGeo.scale(1, 0.78, 0.7);
+        const wing = new THREE.Mesh(wingGeo, wingMat);
+        wing.position.set(0.08, 0.05, 0.05);
+        kaguGroup.add(wing);
+
+        // Tail feathers
+        const tail1 = makeCylinder(0.08, 0.22, 0.7, bodyMat, [-0.8, -0.25, -0.1], [0, 0, 0.55]);
+        const tail2 = makeCylinder(0.06, 0.18, 0.65, bodyMat, [-0.85, -0.4, 0.05], [0, 0.1, 0.65]);
+        kaguGroup.add(tail1, tail2);
+
+        // Neck
+        const neck = makeCylinder(0.3, 0.38, 0.55, bodyMat, [0.55, 0.72, 0.05], [0, 0, -0.22]);
+        kaguGroup.add(neck);
+
+        // Head
+        const head = makeSphere(0.52, wingMat, [0.8, 1.15, 0]);
+        kaguGroup.add(head);
+
+        // Beak (elongated cone)
+        const beakGeo = new THREE.ConeGeometry(0.08, 0.55, 7);
+        const beak = new THREE.Mesh(beakGeo, beakMat);
+        beak.position.set(1.28, 1.1, 0);
+        beak.rotation.set(0, 0, -Math.PI / 2);
+        kaguGroup.add(beak);
+
+        // Eye
+        const eyeOuter = makeSphere(0.13, eyeWhiteMat, [0.95, 1.22, 0.38]);
+        const eyePupil = makeSphere(0.085, eyePupilMat, [1.0, 1.22, 0.44]);
+        const eyeHighlight = makeSphere(0.032, eyeShine, [1.04, 1.26, 0.48]);
+        kaguGroup.add(eyeOuter, eyePupil, eyeHighlight);
+
+        // Crest feathers (the kagu's signature feature)
+        const crestAngles = [-0.4, -0.2, 0, 0.2, 0.4];
+        const crestHeights = [1.6, 1.75, 1.85, 1.75, 1.6];
+        crestAngles.forEach((angle, i) => {
+          // Stem
+          const stemH = crestHeights[i] - 1.15;
+          const stem = makeCylinder(0.025, 0.03, stemH, crestBaseMat,
+            [0.8 + angle * 0.2, 1.15 + stemH / 2 + 0.1, 0],
+            [0, 0, angle * 0.15]
+          );
+          kaguGroup.add(stem);
+          // Tip sphere (coral colored)
+          const tip = makeSphere(0.07, crestTipMat, [
+            0.8 + angle * 0.25,
+            crestHeights[i] + 0.18,
+            0
+          ]);
+          kaguGroup.add(tip);
+        });
+
+        // Legs
+        const leg1 = makeCylinder(0.045, 0.05, 0.5, beakMat, [-0.15, -0.88, 0.1], [0, 0, 0.08]);
+        const leg2 = makeCylinder(0.045, 0.05, 0.5, beakMat, [0.2, -0.88, -0.1], [0, 0, -0.06]);
+        // Feet
+        const foot1 = makeCylinder(0.03, 0.02, 0.25, beakMat, [-0.22, -1.1, 0.18], [0, 0, 0.5]);
+        const foot2 = makeCylinder(0.03, 0.02, 0.25, beakMat, [0.28, -1.1, -0.18], [0, 0, -0.5]);
+        kaguGroup.add(leg1, leg2, foot1, foot2);
+
+        // Scale and center
+        kaguGroup.scale.setScalar(0.78);
+        kaguGroup.position.y = 0.1;
+
+        // ── Mouse tracking ────────────────────────────────────────────
+        let targetRotX = 0;
+        let targetRotY = 0;
+        let currentRotX = 0;
+        let currentRotY = 0;
+        const HEAD_RANGE = 0.28;
+
+        canvas.addEventListener('mousemove', (e) => {
+          const rect = canvas.getBoundingClientRect();
+          const nx = (e.clientX - rect.left) / rect.width * 2 - 1;
+          const ny = -((e.clientY - rect.top) / rect.height * 2 - 1);
+          targetRotY = nx * HEAD_RANGE;
+          targetRotX = ny * HEAD_RANGE * 0.5;
+        });
+
+        // ── Animation loop ───────────────────────────────────────────
+        const clock = new THREE.Clock();
+        let animFrame;
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        function animate() {
+          animFrame = requestAnimationFrame(animate);
+          const t = clock.getElapsedTime();
+
+          if (!prefersReducedMotion) {
+            // Spring-damped head follow
+            const springK = 0.08;
+            currentRotX += (targetRotX - currentRotX) * springK;
+            currentRotY += (targetRotY - currentRotY) * springK;
+
+            // Gentle idle bob
+            kaguGroup.position.y = 0.1 + Math.sin(t * 1.2) * 0.04;
+
+            // Subtle breathing (scale)
+            const breathe = 1 + Math.sin(t * 1.4) * 0.012;
+            kaguGroup.scale.setScalar(0.78 * breathe);
+
+            // Head crest sway
+            head.rotation.y = currentRotY * 0.9;
+            head.rotation.x = currentRotX * 0.6;
+
+            // Whole bird slight tilt
+            kaguGroup.rotation.z = Math.sin(t * 0.6) * 0.018;
+          }
+
+          renderer.render(scene, camera);
+        }
+
+        // Pause when offscreen
+        const visibilityObserver = new IntersectionObserver((entries) => {
+          if (entries[0].isIntersecting) {
+            animate();
+          } else {
+            cancelAnimationFrame(animFrame);
+          }
+        }, { threshold: 0.05 });
+        visibilityObserver.observe(canvas);
+
+        // Initial render even if reduced motion
+        animate();
+
+        // Cleanup
+        function dispose() {
+          cancelAnimationFrame(animFrame);
+          visibilityObserver.disconnect();
+          renderer.dispose();
+          scene.traverse((obj) => {
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) {
+              if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+              else obj.material.dispose();
+            }
+          });
+        }
+
+        window.addEventListener('beforeunload', dispose, { once: true });
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+          const w = canvas.clientWidth;
+          const h = canvas.clientHeight;
+          renderer.setSize(w, h, false);
+          camera.aspect = w / h;
+          camera.updateProjectionMatrix();
+        });
+      }
+    }
+  </script>
+
+</body>
+</html>
