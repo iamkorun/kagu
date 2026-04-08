@@ -163,6 +163,20 @@ fn scan_non_git_dir_errors() {
 }
 
 #[test]
+fn scan_missing_path_errors_with_clear_message() {
+    let out = Command::new(bin())
+        .args(["scan", "--path", "/no/such/dir/xyz"])
+        .output()
+        .unwrap();
+    assert!(!out.status.success());
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("path does not exist"),
+        "stderr: {stderr}"
+    );
+}
+
+#[test]
 fn scan_empty_repo_is_clean() {
     let dir = tempdir::TempDirLike::new();
     git(dir.path(), &["init", "-q", "-b", "main"]);

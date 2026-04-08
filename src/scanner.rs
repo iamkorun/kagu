@@ -1,5 +1,5 @@
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 #[derive(Debug, Clone)]
@@ -12,6 +12,7 @@ pub struct CommitRecord {
 #[derive(Debug)]
 pub enum ScanError {
     NotAGitRepo,
+    PathNotFound(PathBuf),
     GitMissing,
     GitFailed(String),
     Io(io::Error),
@@ -21,6 +22,7 @@ impl std::fmt::Display for ScanError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ScanError::NotAGitRepo => write!(f, "not inside a git repository"),
+            ScanError::PathNotFound(p) => write!(f, "path does not exist: {}", p.display()),
             ScanError::GitMissing => write!(f, "`git` executable not found in PATH"),
             ScanError::GitFailed(s) => write!(f, "git command failed: {s}"),
             ScanError::Io(e) => write!(f, "io error: {e}"),
@@ -46,6 +48,9 @@ const REC: &str = "\x1fEND\x1f";
 /// Run `git log` in `dir`, optionally constrained by `range` (e.g. "main..HEAD"),
 /// returning the commits oldest-first.
 pub fn scan(dir: &Path, range: Option<&str>) -> Result<Vec<CommitRecord>, ScanError> {
+    if !dir.exists() {
+        return Err(ScanError::PathNotFound(dir.to_path_buf()));
+    }
     // Verify dir is a git repo first.
     let check = Command::new("git")
         .arg("-C")

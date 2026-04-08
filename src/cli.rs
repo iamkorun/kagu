@@ -7,9 +7,48 @@ use crate::report;
 use crate::scanner;
 use crate::validator::{validate, ValidatorOptions};
 
+const MAIN_LONG_ABOUT: &str = "\
+Zero-config conventional commit auditor.
+
+Point kagu at a git repository and it tells you which commits break
+the Conventional Commits v1.0.0 spec. Ships as a single binary, with
+no config file, no Node.js, and no setup.
+
+EXAMPLES:
+  kagu scan                      audit the full history of the current repo
+  kagu scan --since main         audit only commits not on main
+  kagu scan --json --authors     machine-readable output with per-author stats
+  kagu lint .git/COMMIT_EDITMSG  lint a single commit message file
+  kagu hook install              install kagu as a commit-msg hook
+
+EXIT CODES:
+  0   all commits are spec-compliant
+  1   one or more violations found
+  2   system error (path missing, git not found, invalid --since ref)
+";
+
+const SCAN_AFTER_HELP: &str = "\
+EXAMPLES:
+  kagu scan                      audit the full history of the current repo
+  kagu scan --since main         CI-friendly: only new commits on this branch
+  kagu scan --strict --authors   require scope, show per-author breakdown
+  kagu scan --json > report.json dump machine-readable JSON
+
+EXIT CODES:
+  0   all commits are spec-compliant
+  1   one or more violations found
+  2   system error (path missing, git not found, invalid --since ref)
+";
+
 /// Zero-config conventional commit auditor.
 #[derive(Debug, Parser)]
-#[command(name = "kagu", version, about, long_about = None)]
+#[command(
+    name = "kagu",
+    version,
+    about,
+    long_about = MAIN_LONG_ABOUT,
+    arg_required_else_help = true,
+)]
 struct Cli {
     /// Suppress non-essential output.
     #[arg(long, short, global = true, conflicts_with = "verbose")]
@@ -34,13 +73,14 @@ enum Cmd {
 }
 
 #[derive(Debug, Args)]
+#[command(after_help = SCAN_AFTER_HELP)]
 struct ScanArgs {
     /// Repository path (default: current directory).
-    #[arg(long, default_value = ".")]
+    #[arg(long, short = 'p', default_value = ".", value_name = "DIR")]
     path: PathBuf,
 
     /// Only scan commits in `<since>..HEAD` (e.g. `main`, `v1.0.0`).
-    #[arg(long)]
+    #[arg(long, value_name = "REF")]
     since: Option<String>,
 
     /// Include a per-author breakdown.
