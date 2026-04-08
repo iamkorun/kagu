@@ -145,6 +145,16 @@
         0 16px 40px -12px rgba(0, 0, 0, 0.7),
         0 0 0 1px rgba(127, 171, 135, 0.25);
     }
+    /* Long commands scroll horizontally inside the pill instead of wrapping */
+    .install-cmd-scroll {
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
+      -webkit-mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
+    }
+    .install-cmd-scroll::-webkit-scrollbar { display: none; }
 
     /* Tab active state */
     .tab-btn[data-active="true"] {
@@ -259,7 +269,7 @@
              aria-label="Copy install command">
           <div class="flex items-center gap-4">
             <span class="text-stone-soft font-mono text-sm sm:text-base select-none" aria-hidden="true">$</span>
-            <code id="install-cmd" class="flex-1 text-left font-mono text-base sm:text-xl md:text-2xl text-cream tracking-tight select-all">cargo install kagu</code>
+            <code id="install-cmd" class="install-cmd-scroll flex-1 min-w-0 text-left font-mono text-base sm:text-xl md:text-2xl text-cream tracking-tight select-all">cargo install kagu</code>
             <button type="button"
                     onclick="event.stopPropagation(); copyInstall()"
                     class="flex-shrink-0 p-2 rounded-md text-stone-warm hover:text-sage-400 hover:bg-sage-500/10 transition-colors"
@@ -706,7 +716,7 @@ kagu: commit message rejected
     const INSTALL_CMDS = {
       cargo:  'cargo install kagu',
       git:    'cargo install --git https://github.com/iamkorun/kagu',
-      source: 'git clone https://github.com/iamkorun/kagu.git && cd kagu && cargo install --path .',
+      source: 'git clone https://github.com/iamkorun/kagu && cd kagu && cargo install --path .',
       binary: 'curl -LO https://github.com/iamkorun/kagu/releases/latest/download/kagu-x86_64-linux.tar.gz',
     };
 
