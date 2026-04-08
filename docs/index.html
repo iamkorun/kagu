@@ -20,8 +20,13 @@
   <meta name="twitter:image" content="https://iamkorun.github.io/kagu/og-image.png" />
   <!-- Canonical -->
   <link rel="canonical" href="https://iamkorun.github.io/kagu/" />
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://api.fontshare.com" />
+  <!-- Theme color for browser chrome -->
+  <meta name="theme-color" content="#1C1A17" />
+  <!-- Favicon (inline SVG — no extra request) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='54' font-size='54'%3E%F0%9F%90%A6%3C/text%3E%3C/svg%3E" />
+  <!-- Fonts: preconnect + preload stylesheet for faster FCP -->
+  <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
+  <link rel="preload" as="style" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800&f[]=jetbrains-mono@400,700&display=swap" />
   <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800&f[]=jetbrains-mono@400,700&display=swap" rel="stylesheet" />
   <!-- Tailwind CSS v3 (pinned) -->
   <script src="https://cdn.tailwindcss.com/3.4.1"></script>
@@ -106,7 +111,6 @@
       display: block;
       width: 100%;
       height: 100%;
-      cursor: none;
     }
 
     .copy-btn:active { transform: scale(0.97); }
