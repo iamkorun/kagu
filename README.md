@@ -27,7 +27,7 @@ Named after the [kagu](https://en.wikipedia.org/wiki/Kagu) — a rare, crested b
 
 ## Demo
 
-![demo](docs/demo.gif)
+<!-- TODO: replace with a real recording (docs/demo.gif) -->
 
 ```
 $ kagu scan
@@ -105,11 +105,21 @@ summary
 kagu scan --since main
 ```
 
-Use in GitHub Actions to catch violations before they merge:
+Drop this into `.github/workflows/ci.yml` to block bad commits on every PR:
 
 ```yaml
-- name: Audit commits
-  run: kagu scan --since origin/main --quiet
+name: Commit audit
+on: [pull_request]
+jobs:
+  kagu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # full history so --since origin/main works
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo install kagu
+      - run: kagu scan --since origin/${{ github.base_ref }} --quiet
 ```
 
 Exit code `1` if any violations are found — CI fails automatically.
@@ -208,18 +218,26 @@ kagu: commit message rejected
 
 | Flag | Short | Description |
 |------|-------|-------------|
-| `--quiet` | `-q` | Suppress output, only set exit code |
+| `--quiet` | `-q` | Suppress output, only set exit code (mutually exclusive with `--verbose`) |
 | `--verbose` | `-v` | Print every commit, not just violations |
+| `--version` | `-V` | Print version |
+| `--help` | `-h` | Print help text with examples |
 
 ### `scan` flags
 
-| Flag | Description |
-|------|-------------|
-| `--path <PATH>` | Repository path (default: `.`) |
-| `--since <REF>` | Only scan commits in `<ref>..HEAD` |
-| `--authors` | Include per-author breakdown |
-| `--json` | Output as JSON |
-| `--strict` | Require `(scope)` on every commit |
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--path <DIR>` | `-p` | Repository path (default: `.`) |
+| `--since <REF>` | | Only scan commits in `<ref>..HEAD` |
+| `--authors` | | Include per-author breakdown |
+| `--json` | | Output as JSON |
+| `--strict` | | Require `(scope)` on every commit |
+
+### Environment variables
+
+| Variable | Effect |
+|----------|--------|
+| `NO_COLOR` | Disable ANSI colors in output (also auto-detected when piping) |
 
 ## Exit Codes
 
@@ -238,6 +256,33 @@ kagu validates against the [Conventional Commits v1.0.0](https://www.conventiona
 `feat` `fix` `docs` `style` `refactor` `perf` `test` `build` `ci` `chore` `revert`
 
 Merge commits and "Initial commit" are skipped automatically.
+
+## Rules
+
+| Code | Severity | Meaning |
+|------|----------|---------|
+| `format` | error | Subject does not match `<type>(<scope>)?!?: <description>` |
+| `type` | error | Commit type is not in the allowed list |
+| `description` | error | Description is empty |
+| `length` | error | Description is longer than 100 characters |
+| `scope` | error | `--strict` mode: scope is required on every commit |
+| `punctuation` | warning | Description ends with a period |
+
+Warnings don't fail the build — only errors do.
+
+## kagu vs. alternatives
+
+|  | kagu | commitlint | cocogitto | gitlint |
+|--|------|------------|-----------|---------|
+| Install size | ~644 KB | Node + 12 MB | ~7 MB | Python + deps |
+| Config required | no | yes (`.commitlintrc`) | yes (`cog.toml`) | yes (`.gitlint`) |
+| Runtime | none | Node.js | none | Python |
+| JSON output | yes | no | no | no |
+| Per-author stats | yes | no | no | no |
+| Scope of tool | audit + hook | hook + lint | full release mgmt | hook + lint |
+
+kagu is intentionally narrow: audit commits, install a hook, print a score.
+No plugins. No config. No release automation. No changelog generation.
 
 ## Features
 
