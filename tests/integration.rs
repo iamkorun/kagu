@@ -170,10 +170,7 @@ fn scan_missing_path_errors_with_clear_message() {
         .unwrap();
     assert!(!out.status.success());
     let stderr = String::from_utf8_lossy(&out.stderr);
-    assert!(
-        stderr.contains("path does not exist"),
-        "stderr: {stderr}"
-    );
+    assert!(stderr.contains("path does not exist"), "stderr: {stderr}");
 }
 
 #[test]

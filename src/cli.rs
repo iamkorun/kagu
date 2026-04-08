@@ -227,4 +227,3 @@ fn run_hook(args: HookArgs, quiet: bool) -> i32 {
         },
     }
 }
-
