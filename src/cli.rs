@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand};
 
@@ -12,7 +12,7 @@ use crate::validator::{validate, ValidatorOptions};
 #[command(name = "kagu", version, about, long_about = None)]
 struct Cli {
     /// Suppress non-essential output.
-    #[arg(long, short, global = true)]
+    #[arg(long, short, global = true, conflicts_with = "verbose")]
     quiet: bool,
 
     /// Print every commit, not just violations.
@@ -113,7 +113,13 @@ fn run_scan(args: ScanArgs, quiet: bool, verbose: bool) -> i32 {
     let report = report::build(&commits, &results, args.authors);
 
     if args.json {
-        println!("{}", report::render_json(&report));
+        match report::render_json(&report) {
+            Ok(s) => println!("{s}"),
+            Err(e) => {
+                eprintln!("kagu: failed to serialize report: {e}");
+                return 2;
+            }
+        }
     } else if !quiet {
         print!("{}", report::render_pretty(&report, verbose));
     }
@@ -182,7 +188,3 @@ fn run_hook(args: HookArgs, quiet: bool) -> i32 {
     }
 }
 
-#[allow(dead_code)]
-fn _path_str(p: &Path) -> String {
-    p.display().to_string()
-}

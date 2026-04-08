@@ -61,7 +61,7 @@ pub fn install(repo_dir: &Path) -> Result<PathBuf, HookError> {
     fs::create_dir_all(&dir)?;
     let path = dir.join("commit-msg");
     if path.exists() {
-        let existing = fs::read_to_string(&path).unwrap_or_default();
+        let existing = fs::read_to_string(&path)?;
         if !existing.contains(SENTINEL) {
             return Err(HookError::AlreadyInstalled);
         }
@@ -77,7 +77,7 @@ pub fn uninstall(repo_dir: &Path) -> Result<PathBuf, HookError> {
     if !path.exists() {
         return Err(HookError::NotInstalled);
     }
-    let existing = fs::read_to_string(&path).unwrap_or_default();
+    let existing = fs::read_to_string(&path)?;
     if !existing.contains(SENTINEL) {
         return Err(HookError::NotManaged);
     }

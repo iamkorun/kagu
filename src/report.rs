@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use owo_colors::OwoColorize;
+use owo_colors::{OwoColorize, Stream};
 use serde::Serialize;
 
 use crate::scanner::CommitRecord;
@@ -148,31 +148,57 @@ pub fn render_pretty(report: &FullReport, verbose: bool) -> String {
     use std::fmt::Write;
 
     if report.commits.is_empty() {
-        let _ = writeln!(out, "{}", "no commits to scan".dimmed());
+        let _ = writeln!(
+            out,
+            "{}",
+            "no commits to scan".if_supports_color(Stream::Stdout, |t| t.dimmed())
+        );
         return out;
     }
 
-    let _ = writeln!(out, "{}", "kagu scan".bold());
+    let _ = writeln!(
+        out,
+        "{}",
+        "kagu scan".if_supports_color(Stream::Stdout, |t| t.bold())
+    );
     let _ = writeln!(out);
 
     for c in &report.commits {
         let short: String = c.sha.chars().take(7).collect();
         let badge = match c.status {
-            "clean" => "✓".green().to_string(),
-            "warning" => "!".yellow().to_string(),
-            "error" => "✗".red().to_string(),
-            "skipped" => "·".dimmed().to_string(),
+            "clean" => "✓"
+                .if_supports_color(Stream::Stdout, |t| t.green())
+                .to_string(),
+            "warning" => "!"
+                .if_supports_color(Stream::Stdout, |t| t.yellow())
+                .to_string(),
+            "error" => "✗"
+                .if_supports_color(Stream::Stdout, |t| t.red())
+                .to_string(),
+            "skipped" => "·"
+                .if_supports_color(Stream::Stdout, |t| t.dimmed())
+                .to_string(),
             _ => "?".to_string(),
         };
         // Always show errors; otherwise honor verbose.
         let show = verbose || c.status == "error" || c.status == "warning";
         if show {
-            let _ = writeln!(out, "  {} {}  {}", badge, short.dimmed(), c.subject);
+            let _ = writeln!(
+                out,
+                "  {} {}  {}",
+                badge,
+                short.if_supports_color(Stream::Stdout, |t| t.dimmed()),
+                c.subject
+            );
             for v in &c.violations {
                 let tag = if v.is_error() {
-                    "error".red().to_string()
+                    "error"
+                        .if_supports_color(Stream::Stdout, |t| t.red())
+                        .to_string()
                 } else {
-                    "warn ".yellow().to_string()
+                    "warn "
+                        .if_supports_color(Stream::Stdout, |t| t.yellow())
+                        .to_string()
                 };
                 let _ = writeln!(out, "      {} [{}] {}", tag, v.code, v.message);
             }
@@ -181,28 +207,51 @@ pub fn render_pretty(report: &FullReport, verbose: bool) -> String {
 
     let s = &report.summary;
     let _ = writeln!(out);
-    let _ = writeln!(out, "{}", "summary".bold());
+    let _ = writeln!(
+        out,
+        "{}",
+        "summary".if_supports_color(Stream::Stdout, |t| t.bold())
+    );
     let _ = writeln!(
         out,
         "  total: {}  clean: {}  warnings: {}  errors: {}  skipped: {}",
         s.total,
-        s.clean.to_string().green(),
-        s.warnings.to_string().yellow(),
-        s.errors.to_string().red(),
-        s.skipped.to_string().dimmed(),
+        s.clean
+            .to_string()
+            .if_supports_color(Stream::Stdout, |t| t.green()),
+        s.warnings
+            .to_string()
+            .if_supports_color(Stream::Stdout, |t| t.yellow()),
+        s.errors
+            .to_string()
+            .if_supports_color(Stream::Stdout, |t| t.red()),
+        s.skipped
+            .to_string()
+            .if_supports_color(Stream::Stdout, |t| t.dimmed()),
     );
+    let score_str = s.score.to_string();
     let score_colored = if s.score >= 90 {
-        s.score.to_string().green().to_string()
+        score_str
+            .if_supports_color(Stream::Stdout, |t| t.green())
+            .to_string()
     } else if s.score >= 70 {
-        s.score.to_string().yellow().to_string()
+        score_str
+            .if_supports_color(Stream::Stdout, |t| t.yellow())
+            .to_string()
     } else {
-        s.score.to_string().red().to_string()
+        score_str
+            .if_supports_color(Stream::Stdout, |t| t.red())
+            .to_string()
     };
     let _ = writeln!(out, "  score: {}/100", score_colored);
 
     if !s.by_type.is_empty() {
         let _ = writeln!(out);
-        let _ = writeln!(out, "{}", "types".bold());
+        let _ = writeln!(
+            out,
+            "{}",
+            "types".if_supports_color(Stream::Stdout, |t| t.bold())
+        );
         for (k, v) in &s.by_type {
             let _ = writeln!(out, "  {:<10} {}", k, v);
         }
@@ -210,7 +259,11 @@ pub fn render_pretty(report: &FullReport, verbose: bool) -> String {
 
     if let Some(authors) = &report.authors {
         let _ = writeln!(out);
-        let _ = writeln!(out, "{}", "authors".bold());
+        let _ = writeln!(
+            out,
+            "{}",
+            "authors".if_supports_color(Stream::Stdout, |t| t.bold())
+        );
         let _ = writeln!(
             out,
             "  {:<24} {:>6} {:>6} {:>6} {:>6}",
@@ -228,6 +281,9 @@ pub fn render_pretty(report: &FullReport, verbose: bool) -> String {
     out
 }
 
-pub fn render_json(report: &FullReport) -> String {
-    serde_json::to_string_pretty(report).unwrap_or_else(|_| "{}".to_string())
+/// Serialize a report as pretty JSON. Returns an error if serialization fails
+/// (should never happen for well-formed reports, but we surface it instead of
+/// silently hiding it).
+pub fn render_json(report: &FullReport) -> Result<String, serde_json::Error> {
+    serde_json::to_string_pretty(report)
 }

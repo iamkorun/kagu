@@ -169,13 +169,11 @@ pub fn validate(subject: &str, opts: ValidatorOptions<'_>) -> ValidationResult {
     if parsed.description.is_empty() {
         violations.push(Violation::err("description", "description is empty"));
     } else {
-        if parsed.description.len() > 100 {
+        let char_count = parsed.description.chars().count();
+        if char_count > 100 {
             violations.push(Violation::err(
                 "length",
-                format!(
-                    "description is {} chars (max 100)",
-                    parsed.description.len()
-                ),
+                format!("description is {char_count} chars (max 100)"),
             ));
         }
         if parsed.description.ends_with('.') {
