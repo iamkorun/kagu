@@ -161,3 +161,170 @@ fn scan_non_git_dir_errors() {
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(stderr.contains("not inside a git repository"));
 }
+
+#[test]
+fn scan_empty_repo_is_clean() {
+    let dir = tempdir::TempDirLike::new();
+    git(dir.path(), &["init", "-q", "-b", "main"]);
+    let out = Command::new(bin())
+        .args(["scan", "--json", "--path"])
+        .arg(dir.path())
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "empty repo should exit 0");
+    let v: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["summary"]["total"], 0);
+    assert_eq!(v["summary"]["errors"], 0);
+    assert_eq!(v["summary"]["score"], 100);
+}
+
+#[test]
+fn scan_with_invalid_since_errors() {
+    let repo = make_repo();
+    let out = Command::new(bin())
+        .args(["scan", "--since", "no-such-ref-xyz", "--path"])
+        .arg(repo.path())
+        .output()
+        .unwrap();
+    assert!(!out.status.success(), "should fail for nonexistent ref");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(stderr.contains("git"), "stderr: {stderr}");
+}
+
+#[test]
+fn lint_missing_file_errors() {
+    let out = Command::new(bin())
+        .args(["lint", "/no/such/file/exists"])
+        .output()
+        .unwrap();
+    assert!(!out.status.success());
+    assert_eq!(out.status.code(), Some(2));
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(stderr.contains("cannot read"));
+}
+
+#[test]
+fn lint_strict_rejects_missing_scope() {
+    let dir = tempdir::TempDirLike::new();
+    let f = dir.path().join("msg");
+    std::fs::write(&f, "feat: no scope").unwrap();
+    let out = Command::new(bin())
+        .args(["lint", "--strict"])
+        .arg(&f)
+        .output()
+        .unwrap();
+    assert!(!out.status.success());
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(stderr.contains("scope"));
+}
+
+#[test]
+fn hook_install_is_idempotent_for_own_hook() {
+    let dir = tempdir::TempDirLike::new();
+    git(dir.path(), &["init", "-q", "-b", "main"]);
+    for _ in 0..2 {
+        let out = Command::new(bin())
+            .args(["hook", "install", "--path"])
+            .arg(dir.path())
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "{out:?}");
+    }
+}
+
+#[test]
+fn hook_install_refuses_foreign_hook() {
+    let dir = tempdir::TempDirLike::new();
+    git(dir.path(), &["init", "-q", "-b", "main"]);
+    // Pre-create a foreign commit-msg hook
+    let hook_path = dir.path().join(".git/hooks/commit-msg");
+    std::fs::create_dir_all(hook_path.parent().unwrap()).unwrap();
+    std::fs::write(&hook_path, "#!/bin/sh\necho 'other tool'\n").unwrap();
+
+    let out = Command::new(bin())
+        .args(["hook", "install", "--path"])
+        .arg(dir.path())
+        .output()
+        .unwrap();
+    assert!(!out.status.success());
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(stderr.contains("already exists"), "stderr: {stderr}");
+}
+
+#[test]
+fn hook_uninstall_fails_when_not_installed() {
+    let dir = tempdir::TempDirLike::new();
+    git(dir.path(), &["init", "-q", "-b", "main"]);
+    let out = Command::new(bin())
+        .args(["hook", "uninstall", "--path"])
+        .arg(dir.path())
+        .output()
+        .unwrap();
+    assert!(!out.status.success());
+}
+
+#[test]
+fn quiet_and_verbose_conflict() {
+    let repo = make_repo();
+    let out = Command::new(bin())
+        .args(["-q", "-v", "scan", "--path"])
+        .arg(repo.path())
+        .output()
+        .unwrap();
+    assert!(!out.status.success());
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("cannot be used with") || stderr.contains("conflict"),
+        "stderr: {stderr}"
+    );
+}
+
+#[test]
+fn quiet_suppresses_stdout_but_preserves_exit_code() {
+    let repo = make_repo();
+    let out = Command::new(bin())
+        .args(["scan", "--quiet", "--path"])
+        .arg(repo.path())
+        .output()
+        .unwrap();
+    assert!(!out.status.success(), "violations should still exit 1");
+    assert!(
+        out.stdout.is_empty(),
+        "--quiet should suppress stdout, got: {:?}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+}
+
+#[test]
+fn no_color_env_strips_ansi() {
+    let repo = make_repo();
+    let out = Command::new(bin())
+        .env("NO_COLOR", "1")
+        .args(["scan", "--verbose", "--path"])
+        .arg(repo.path())
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        !stdout.contains("\x1b["),
+        "NO_COLOR should strip ANSI codes, got: {stdout:?}"
+    );
+}
+
+#[test]
+fn version_flag_prints_version() {
+    let out = Command::new(bin()).arg("--version").output().unwrap();
+    assert!(out.status.success());
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(stdout.contains("kagu"));
+}
+
+#[test]
+fn help_flag_prints_subcommands() {
+    let out = Command::new(bin()).arg("--help").output().unwrap();
+    assert!(out.status.success());
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(stdout.contains("scan"));
+    assert!(stdout.contains("lint"));
+    assert!(stdout.contains("hook"));
+}

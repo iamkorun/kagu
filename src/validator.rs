@@ -299,4 +299,100 @@ mod tests {
         let r = validate("feat: ", opts());
         assert!(r.violations.iter().any(|v| v.code == "description"));
     }
+
+    #[test]
+    fn rejects_type_with_digits() {
+        assert!(parse_subject("feat1: add thing").is_none());
+        assert!(parse_subject("v2: release").is_none());
+    }
+
+    #[test]
+    fn parses_breaking_without_scope() {
+        let p = parse_subject("feat!: drop legacy api").unwrap();
+        assert_eq!(p.r#type, "feat");
+        assert_eq!(p.scope, None);
+        assert!(p.breaking);
+        assert_eq!(p.description, "drop legacy api");
+    }
+
+    #[test]
+    fn length_counts_characters_not_bytes() {
+        // 50 multi-byte chars = 150 bytes, but only 50 chars → well under 100
+        let desc: String = "é".repeat(50);
+        let subject = format!("feat: {desc}");
+        let r = validate(&subject, opts());
+        assert!(
+            !r.violations.iter().any(|v| v.code == "length"),
+            "50 multi-byte chars should not trigger length violation"
+        );
+
+        // 101 multi-byte chars = 202 bytes → should fail length
+        let desc: String = "é".repeat(101);
+        let subject = format!("feat: {desc}");
+        let r = validate(&subject, opts());
+        let len_vio = r
+            .violations
+            .iter()
+            .find(|v| v.code == "length")
+            .expect("should have length violation");
+        assert!(
+            len_vio.message.contains("101 chars"),
+            "got: {}",
+            len_vio.message
+        );
+    }
+
+    #[test]
+    fn empty_subject() {
+        let r = validate("", opts());
+        assert!(!r.ok());
+        assert!(r.violations.iter().any(|v| v.code == "format"));
+    }
+
+    #[test]
+    fn whitespace_only_subject() {
+        let r = validate("   ", opts());
+        assert!(!r.ok());
+        assert!(r.violations.iter().any(|v| v.code == "format"));
+    }
+
+    #[test]
+    fn multiple_violations_on_same_commit() {
+        let long: String = "x".repeat(120);
+        let subject = format!("wibble: {long}.");
+        let r = validate(&subject, opts());
+        // unknown type + length + trailing period
+        let codes: Vec<&str> = r.violations.iter().map(|v| v.code.as_str()).collect();
+        assert!(codes.contains(&"type"), "got: {codes:?}");
+        assert!(codes.contains(&"length"), "got: {codes:?}");
+        assert!(codes.contains(&"punctuation"), "got: {codes:?}");
+    }
+
+    #[test]
+    fn multiline_subject_uses_first_line_only() {
+        let r = validate("feat: add thing\n\nLonger body here.", opts());
+        assert!(r.ok(), "body should not affect validation");
+    }
+
+    #[test]
+    fn parse_unicode_description() {
+        let p = parse_subject("feat: ✨ sparkle").unwrap();
+        assert_eq!(p.description, "✨ sparkle");
+    }
+
+    #[test]
+    fn type_is_case_insensitive() {
+        // uppercase type should be normalized and still match
+        let r = validate("FEAT: upper case", opts());
+        assert!(r.ok(), "case should be normalized");
+    }
+
+    #[test]
+    fn skip_merge_is_not_case_sensitive_prefix() {
+        // "Merge " as a prefix is the convention git uses
+        assert!(should_skip("Merge branch 'feature'"));
+        assert!(should_skip("Merge pull request #1 from foo"));
+        // Should NOT skip a normal commit that happens to mention merge
+        assert!(!should_skip("feat: handle merge conflicts"));
+    }
 }
