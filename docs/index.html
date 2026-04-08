@@ -179,10 +179,6 @@
       background-color: rgba(42, 38, 32, 0.55);
     }
 
-    /* Section reveal */
-    .reveal { opacity: 0; transform: translateY(14px); transition: opacity 0.7s ease-out, transform 0.7s ease-out; }
-    .reveal.in  { opacity: 1; transform: translateY(0); }
-
     /* Respect reduced motion */
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
@@ -190,7 +186,6 @@
         animation-duration: 0.01ms !important;
         transition-duration: 0.01ms !important;
       }
-      .reveal { opacity: 1; transform: none; }
       .feature-card:hover { transform: none; }
     }
 
@@ -203,21 +198,21 @@
 
   <!-- ═══════ NAV ═══════ -->
   <nav class="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-charcoal/75 border-b border-white/5">
-    <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-      <a href="#" class="flex items-center gap-2 font-display font-bold text-lg tracking-tight">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <a href="#" class="inline-flex items-center gap-2 font-display font-bold text-lg tracking-tight px-2 -mx-2 h-12">
         <span class="text-sage-400" aria-hidden="true">🐦</span>
         <span class="text-cream">kagu</span>
       </a>
-      <div class="flex items-center gap-1 sm:gap-5 text-sm">
-        <a href="#quickstart" class="hidden sm:inline text-stone-warm-2 hover:text-cream transition-colors">Quick Start</a>
-        <a href="#usage" class="hidden sm:inline text-stone-warm-2 hover:text-cream transition-colors">Usage</a>
+      <div class="flex items-center gap-0.5 sm:gap-2 text-sm">
+        <a href="#quickstart" class="hidden sm:inline-flex items-center text-stone-warm-2 hover:text-cream transition-colors px-3 h-12">Quick Start</a>
+        <a href="#usage" class="hidden sm:inline-flex items-center text-stone-warm-2 hover:text-cream transition-colors px-3 h-12">Usage</a>
         <a href="https://github.com/iamkorun/kagu" target="_blank" rel="noopener"
-           class="text-stone-warm-2 hover:text-cream transition-colors flex items-center gap-1.5">
+           class="inline-flex items-center gap-1.5 text-stone-warm-2 hover:text-cream transition-colors px-3 h-12 min-w-[44px]" aria-label="GitHub repository">
           <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
           <span class="hidden sm:inline">GitHub</span>
         </a>
         <a href="https://buymeacoffee.com/iamkorun" target="_blank" rel="noopener"
-           class="text-stone-warm-2 hover:text-coral-400 transition-colors" aria-label="Buy Me a Coffee">
+           class="inline-flex items-center justify-center text-stone-warm-2 hover:text-coral-400 transition-colors px-3 h-12 min-w-[44px] text-base" aria-label="Buy Me a Coffee">
           ☕
         </a>
       </div>
@@ -252,10 +247,10 @@
       <!-- Install tabs + pill — THE HERO ANCHOR -->
       <div class="mt-10 animate-fade-up" style="animation-delay: 240ms;">
         <div role="tablist" aria-label="Install methods" class="flex flex-wrap items-center justify-center gap-1.5 mb-3">
-          <button role="tab" aria-selected="true" class="tab-btn text-[11px] sm:text-xs font-mono uppercase tracking-wider px-3 py-1.5 rounded-md border border-white/8 text-stone-warm transition-colors" data-tab="cargo" data-active="true" onclick="switchTab('cargo')">cargo</button>
-          <button role="tab" aria-selected="false" class="tab-btn text-[11px] sm:text-xs font-mono uppercase tracking-wider px-3 py-1.5 rounded-md border border-white/8 text-stone-warm transition-colors" data-tab="git" onclick="switchTab('git')">from git</button>
-          <button role="tab" aria-selected="false" class="tab-btn text-[11px] sm:text-xs font-mono uppercase tracking-wider px-3 py-1.5 rounded-md border border-white/8 text-stone-warm transition-colors" data-tab="source" onclick="switchTab('source')">from source</button>
-          <button role="tab" aria-selected="false" class="tab-btn text-[11px] sm:text-xs font-mono uppercase tracking-wider px-3 py-1.5 rounded-md border border-white/8 text-stone-warm transition-colors" data-tab="binary" onclick="switchTab('binary')">binary</button>
+          <button role="tab" aria-selected="true" class="tab-btn min-h-[44px] text-[11px] sm:text-xs font-mono uppercase tracking-wider px-4 py-2.5 rounded-md border border-white/8 text-stone-warm transition-colors" data-tab="cargo" data-active="true" onclick="switchTab('cargo')">cargo</button>
+          <button role="tab" aria-selected="false" class="tab-btn min-h-[44px] text-[11px] sm:text-xs font-mono uppercase tracking-wider px-4 py-2.5 rounded-md border border-white/8 text-stone-warm transition-colors" data-tab="git" onclick="switchTab('git')">from git</button>
+          <button role="tab" aria-selected="false" class="tab-btn min-h-[44px] text-[11px] sm:text-xs font-mono uppercase tracking-wider px-4 py-2.5 rounded-md border border-white/8 text-stone-warm transition-colors" data-tab="source" onclick="switchTab('source')">from source</button>
+          <button role="tab" aria-selected="false" class="tab-btn min-h-[44px] text-[11px] sm:text-xs font-mono uppercase tracking-wider px-4 py-2.5 rounded-md border border-white/8 text-stone-warm transition-colors" data-tab="binary" onclick="switchTab('binary')">binary</button>
         </div>
 
         <div class="install-pill group relative mx-auto max-w-xl rounded-xl px-5 sm:px-6 py-4 sm:py-5 cursor-pointer transition-all duration-200"
@@ -460,7 +455,7 @@
               <span class="text-sm font-mono text-cream">cargo</span>
               <span class="text-xs text-stone-soft">— recommended</span>
             </div>
-            <button onclick="copyBlock('qs-cargo', this)" class="text-xs font-mono text-stone-warm hover:text-sage-400 transition-colors px-2.5 py-1 rounded border border-white/8 hover:border-sage-500/35">
+            <button onclick="copyBlock('qs-cargo', this)" class="min-h-[36px] text-xs font-mono text-stone-warm hover:text-sage-400 transition-colors px-3 py-2 rounded border border-white/8 hover:border-sage-500/35">
               copy
             </button>
           </div>
@@ -480,7 +475,7 @@
               <span class="text-sm font-mono text-cream">cargo from git</span>
               <span class="text-xs text-stone-soft">— latest, no crates.io</span>
             </div>
-            <button onclick="copyBlock('qs-git', this)" class="text-xs font-mono text-stone-warm hover:text-sage-400 transition-colors px-2.5 py-1 rounded border border-white/8 hover:border-sage-500/35">
+            <button onclick="copyBlock('qs-git', this)" class="min-h-[36px] text-xs font-mono text-stone-warm hover:text-sage-400 transition-colors px-3 py-2 rounded border border-white/8 hover:border-sage-500/35">
               copy
             </button>
           </div>
@@ -494,7 +489,7 @@
               <span class="w-1.5 h-1.5 rounded-full bg-coral-400"></span>
               <span class="text-sm font-mono text-cream">from source</span>
             </div>
-            <button onclick="copyBlock('qs-source', this)" class="text-xs font-mono text-stone-warm hover:text-sage-400 transition-colors px-2.5 py-1 rounded border border-white/8 hover:border-sage-500/35">
+            <button onclick="copyBlock('qs-source', this)" class="min-h-[36px] text-xs font-mono text-stone-warm hover:text-sage-400 transition-colors px-3 py-2 rounded border border-white/8 hover:border-sage-500/35">
               copy
             </button>
           </div>
@@ -510,7 +505,7 @@
               <span class="w-1.5 h-1.5 rounded-full bg-stone-warm-2"></span>
               <span class="text-sm font-mono text-cream">pre-built binary</span>
             </div>
-            <button onclick="copyBlock('qs-binary', this)" class="text-xs font-mono text-stone-warm hover:text-sage-400 transition-colors px-2.5 py-1 rounded border border-white/8 hover:border-sage-500/35">
+            <button onclick="copyBlock('qs-binary', this)" class="min-h-[36px] text-xs font-mono text-stone-warm hover:text-sage-400 transition-colors px-3 py-2 rounded border border-white/8 hover:border-sage-500/35">
               copy
             </button>
           </div>
@@ -794,22 +789,6 @@ kagu: commit message rejected
         document.body.removeChild(ta);
         resolve();
       });
-    }
-
-    // ── Scroll-reveal observer ────────────────────────────────────────
-    const revealEls = document.querySelectorAll('.reveal');
-    if ('IntersectionObserver' in window && revealEls.length) {
-      const io = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('in');
-            io.unobserve(entry.target);
-          }
-        });
-      }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
-      revealEls.forEach(el => io.observe(el));
-    } else {
-      revealEls.forEach(el => el.classList.add('in'));
     }
 
     // ── Fetch live GitHub star count (best-effort, fails silently) ───
