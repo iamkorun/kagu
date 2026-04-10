@@ -3,10 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark light" />
   <title>🐦 kagu — zero-config conventional commit auditor</title>
   <meta name="description" content="kagu is a zero-config conventional commit auditor. Single Rust binary, no Node, no config file. cargo install kagu and you're done." />
-
-  <!-- Open Graph -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://iamkorun.github.io/kagu/" />
   <meta property="og:title" content="kagu — zero-config conventional commit auditor" />
@@ -14,24 +13,36 @@
   <meta property="og:image" content="https://iamkorun.github.io/kagu/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-
-  <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="kagu — zero-config conventional commit auditor" />
   <meta name="twitter:description" content="Single Rust binary. No Node. No config. It screeches at bad commits so you don't have to." />
   <meta name="twitter:image" content="https://iamkorun.github.io/kagu/og-image.png" />
-
-  <!-- Canonical -->
   <link rel="canonical" href="https://iamkorun.github.io/kagu/" />
-
-  <!-- Theme + favicon -->
-  <meta name="theme-color" content="#1C1A17" />
+  <meta name="theme-color" content="#1C1A17" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#FAF6EF" media="(prefers-color-scheme: light)" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='54' font-size='54'%3E%F0%9F%90%A6%3C/text%3E%3C/svg%3E" />
 
-  <!-- Fonts (Cabinet Grotesk + JetBrains Mono, preloaded for fast FCP) -->
+  <!-- FOUT-T: apply saved theme before first paint -->
+  <script>
+    (function(){
+      try {
+        var t = localStorage.getItem('forge-theme');
+        if (t === 'light') {
+          document.documentElement.classList.remove('dark');
+          document.documentElement.classList.add('light');
+        } else {
+          document.documentElement.classList.add('dark');
+        }
+      } catch(_) {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
+
+  <!-- JetBrains Mono — sole typeface for brutalist grid -->
   <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
-  <link rel="preload" as="style" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800&f[]=jetbrains-mono@400,500,700&display=swap" />
-  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800&f[]=jetbrains-mono@400,500,700&display=swap" rel="stylesheet" />
+  <link rel="preload" as="style" href="https://api.fontshare.com/v2/css?f[]=jetbrains-mono@400,500,700&display=swap" />
+  <link href="https://api.fontshare.com/v2/css?f[]=jetbrains-mono@400,500,700&display=swap" rel="stylesheet" />
 
   <!-- Tailwind CSS v3.4.1 (pinned) -->
   <script src="https://cdn.tailwindcss.com/3.4.1"></script>
@@ -41,778 +52,596 @@
       theme: {
         extend: {
           fontFamily: {
-            display: ['Cabinet Grotesk', 'system-ui', 'sans-serif'],
             mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
           },
           colors: {
-            cream: '#FAF7F2',
-            'cream-dim': '#EAE5DC',
-            charcoal: '#1C1A17',
-            'charcoal-2': '#221F1B',
-            'charcoal-3': '#2A2620',
-            sage: {
-              100: '#EAF0E8',
-              200: '#C9DACC',
-              300: '#A3C3A9',
-              400: '#7FAB87',
-              500: '#5E9168',
-              600: '#3D7248',
-            },
-            coral: {
-              100: '#FBEEE9',
-              300: '#F0A78D',
-              400: '#E8836A',
-              500: '#D9644A',
-            },
-            butter: {
-              400: '#E8C26A',
-              500: '#D4A72C',
-            },
-            stone: {
-              soft: '#6B6355',
-              warm: '#8C8070',
-              'warm-2': '#A69B88',
-            }
-          },
-          keyframes: {
-            fadeUp: {
-              from: { opacity: '0', transform: 'translateY(12px)' },
-              to: { opacity: '1', transform: 'translateY(0)' },
-            },
-            toastIn: {
-              from: { opacity: '0', transform: 'translate(-50%, 8px)' },
-              to: { opacity: '1', transform: 'translate(-50%, 0)' },
-            }
-          },
-          animation: {
-            'fade-up': 'fadeUp 0.6s ease-out forwards',
-            'toast-in': 'toastIn 0.25s ease-out forwards',
+            cream:     { DEFAULT: '#FAF6EF', dim: '#EDE8DF', code: '#F0EBE3' },
+            charcoal:  { DEFAULT: '#1C1A17', 2: '#221F1B', 3: '#2A2620' },
+            coral:     { 400: '#E8836A', 500: '#D9644A', 600: '#C04E35' },
+            sage:      { 400: '#7FAB87', 500: '#5E9168', 600: '#3D7248' },
+            butter:    { 400: '#E8C26A', 500: '#D4A72C' },
+            stone:     { soft: '#6B6355', warm: '#8C8070', 'warm-2': '#A69B88' },
           }
         }
       }
-    }
+    };
   </script>
 
   <style>
     * { box-sizing: border-box; }
-    html {
-      scroll-behavior: smooth;
-      color-scheme: dark;
-    }
+    html { scroll-behavior: smooth; }
+    :root { color-scheme: dark light; }
     body {
-      font-family: 'Cabinet Grotesk', system-ui, sans-serif;
-      background-color: #1C1A17;
-      color: #FAF7F2;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
       -webkit-font-smoothing: antialiased;
       text-rendering: optimizeLegibility;
     }
 
-    /* Subtle warm radial background glow behind hero */
-    .hero-glow {
-      background:
-        radial-gradient(ellipse 60% 45% at 50% 25%, rgba(94, 145, 104, 0.10), transparent 70%),
-        radial-gradient(ellipse 40% 30% at 75% 15%, rgba(217, 100, 74, 0.06), transparent 70%);
-    }
+    /* Terminal syntax — dark mode */
+    .dark .t-ok    { color: #7FAB87; }
+    .dark .t-warn  { color: #E8C26A; }
+    .dark .t-err   { color: #E8836A; }
+    .dark .t-dim   { color: #6B6355; }
+    .dark .t-pr    { color: #A69B88; }
+    .dark .t-bold  { font-weight: 700; color: #FAF6EF; }
+    .dark .t-str   { color: #E8C26A; }
+    .dark .t-kw    { color: #A3C3A9; }
 
-    /* Terminal block — hand-tuned syntax highlighting */
-    .terminal {
-      font-family: 'JetBrains Mono', ui-monospace, monospace;
-      font-size: 0.82rem;
-      line-height: 1.65;
-      color: #EAE5DC;
-    }
-    .terminal .clean  { color: #7FAB87; }
-    .terminal .warn   { color: #E8C26A; }
-    .terminal .error  { color: #E8836A; }
-    .terminal .dim    { color: #6B6355; }
-    .terminal .prompt { color: #A69B88; }
-    .terminal .bold   { font-weight: 700; color: #FAF7F2; }
-    .terminal .hl     { color: #7FAB87; }
-    .terminal .kw     { color: #A3C3A9; }
-    .terminal .str    { color: #E8C26A; }
+    /* Terminal syntax — light mode */
+    .t-ok    { color: #3D7248; }
+    .t-warn  { color: #B08A20; }
+    .t-err   { color: #C04E35; }
+    .t-dim   { color: #A69B88; }
+    .t-pr    { color: #8C8070; }
+    .t-bold  { font-weight: 700; color: #1C1A17; }
+    .t-str   { color: #B08A20; }
+    .t-kw    { color: #3D7248; }
 
-    /* Install pill — the hero anchor */
-    .install-pill {
-      background: linear-gradient(180deg, #221F1B 0%, #1C1A17 100%);
-      box-shadow:
-        0 1px 0 rgba(255, 255, 255, 0.04) inset,
-        0 12px 32px -12px rgba(0, 0, 0, 0.6),
-        0 0 0 1px rgba(255, 255, 255, 0.06);
-    }
-    .install-pill:hover {
-      box-shadow:
-        0 1px 0 rgba(255, 255, 255, 0.06) inset,
-        0 16px 40px -12px rgba(0, 0, 0, 0.7),
-        0 0 0 1px rgba(127, 171, 135, 0.25);
-    }
-    /* Long commands scroll horizontally inside the pill instead of wrapping */
-    .install-cmd-scroll {
-      overflow-x: auto;
-      white-space: nowrap;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-      mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
-      -webkit-mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
-    }
-    .install-cmd-scroll::-webkit-scrollbar { display: none; }
-
-    /* Tab active state */
+    /* Active install tab */
     .tab-btn[data-active="true"] {
-      background-color: rgba(94, 145, 104, 0.15);
-      color: #A3C3A9;
-      border-color: rgba(127, 171, 135, 0.35);
+      background: rgba(232, 131, 106, 0.12);
+      color: #D9644A;
+    }
+    .dark .tab-btn[data-active="true"] {
+      background: rgba(232, 131, 106, 0.15);
+      color: #E8836A;
     }
 
-    /* Copy toast */
+    /* Scrollbar hide */
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Toast */
     .toast {
-      position: fixed;
-      left: 50%;
-      bottom: 32px;
+      position: fixed; left: 50%; bottom: 24px;
       transform: translate(-50%, 8px);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.25s ease, transform 0.25s ease;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
       z-index: 100;
     }
-    .toast.show {
-      opacity: 1;
-      transform: translate(-50%, 0);
-    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
-    /* Gentle card hover lift */
-    .feature-card {
-      transition: transform 0.25s ease, border-color 0.25s ease, background-color 0.25s ease;
-    }
-    .feature-card:hover {
-      transform: translateY(-2px);
-      border-color: rgba(255, 255, 255, 0.12);
-      background-color: rgba(42, 38, 32, 0.55);
-    }
-
-    /* Respect reduced motion */
+    /* Reduced motion */
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
       *, ::before, ::after {
         animation-duration: 0.01ms !important;
         transition-duration: 0.01ms !important;
       }
-      .feature-card:hover { transform: none; }
     }
 
-    /* Scroll-margin for anchor links under sticky nav */
-    section[id] { scroll-margin-top: 72px; }
+    /* Scroll margin for nav */
+    section[id] { scroll-margin-top: 60px; }
   </style>
 </head>
 
-<body class="min-h-[100dvh] bg-charcoal text-cream">
+<body class="min-h-[100dvh] bg-cream dark:bg-charcoal text-charcoal dark:text-cream font-mono text-sm leading-relaxed">
 
-  <!-- ═══════ NAV ═══════ -->
-  <nav class="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-charcoal/75 border-b border-white/5">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-      <a href="#" class="inline-flex items-center gap-2 font-display font-bold text-lg tracking-tight px-2 -mx-2 h-12">
-        <span class="text-sage-400" aria-hidden="true">🐦</span>
-        <span class="text-cream">kagu</span>
+  <!-- ═══ NAV ═══ -->
+  <nav class="sticky top-0 z-50 border-b-2 border-charcoal/15 dark:border-white/15 bg-cream/90 dark:bg-charcoal/90 backdrop-blur-sm">
+    <div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+      <a href="#" class="font-bold text-base tracking-tight flex items-center gap-2 h-14 px-1">
+        <span aria-hidden="true">🐦</span> kagu
       </a>
-      <div class="flex items-center gap-0.5 sm:gap-2 text-sm">
-        <a href="#quickstart" class="hidden sm:inline-flex items-center text-stone-warm-2 hover:text-cream transition-colors px-3 h-12">Quick Start</a>
-        <a href="#usage" class="hidden sm:inline-flex items-center text-stone-warm-2 hover:text-cream transition-colors px-3 h-12">Usage</a>
+      <div class="flex items-center">
+        <a href="#install" class="hidden sm:flex items-center px-3 h-14 text-[10px] uppercase tracking-widest text-stone-warm dark:text-stone-warm-2 hover:text-charcoal dark:hover:text-cream transition-colors">install</a>
+        <a href="#usage" class="hidden sm:flex items-center px-3 h-14 text-[10px] uppercase tracking-widest text-stone-warm dark:text-stone-warm-2 hover:text-charcoal dark:hover:text-cream transition-colors">usage</a>
         <a href="https://github.com/iamkorun/kagu" target="_blank" rel="noopener"
-           class="inline-flex items-center gap-1.5 text-stone-warm-2 hover:text-cream transition-colors px-3 h-12 min-w-[44px]" aria-label="GitHub repository">
+           class="flex items-center px-3 h-14 text-stone-warm dark:text-stone-warm-2 hover:text-charcoal dark:hover:text-cream transition-colors min-w-[44px]" aria-label="GitHub repository">
           <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-          <span class="hidden sm:inline">GitHub</span>
         </a>
         <a href="https://buymeacoffee.com/iamkorun" target="_blank" rel="noopener"
-           class="inline-flex items-center justify-center text-stone-warm-2 hover:text-coral-400 transition-colors px-3 h-12 min-w-[44px] text-base" aria-label="Buy Me a Coffee">
-          ☕
-        </a>
+           class="flex items-center justify-center px-3 h-14 min-w-[44px] text-stone-warm dark:text-stone-warm-2 hover:text-coral-500 dark:hover:text-coral-400 transition-colors" aria-label="Buy Me a Coffee">☕</a>
+        <button id="theme-toggle" onclick="toggleTheme()"
+                class="flex items-center justify-center px-3 h-14 min-w-[44px] text-stone-warm dark:text-stone-warm-2 hover:text-charcoal dark:hover:text-cream transition-colors"
+                aria-label="toggle theme" aria-pressed="true">
+          <svg class="w-4 h-4 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          <svg class="w-4 h-4 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
       </div>
     </div>
   </nav>
 
-  <!-- ═══════ HERO ═══════ -->
-  <section class="hero-glow relative pt-28 pb-20 sm:pt-36 sm:pb-28">
-    <div class="max-w-4xl mx-auto px-6 text-center">
+  <main class="max-w-5xl mx-auto px-4 py-8 sm:py-12">
 
-      <!-- Tagline pill -->
-      <div class="inline-flex items-center gap-2 text-[11px] sm:text-xs font-mono uppercase tracking-widest text-sage-300 bg-sage-500/10 border border-sage-500/25 rounded-full px-3.5 py-1.5 mb-8 animate-fade-up">
-        <span class="w-1.5 h-1.5 rounded-full bg-sage-400 animate-pulse"></span>
-        Zero config · Single binary · No Node
+    <!-- ═══ HERO + INSTALL ═══ -->
+    <section class="border-2 border-charcoal/15 dark:border-white/15">
+      <!-- Hero copy -->
+      <div class="p-6 sm:p-8 md:p-10">
+        <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tighter leading-none">kagu</h1>
+        <p class="mt-4 text-base sm:text-lg text-coral-500 dark:text-coral-400 font-medium">Screeches at bad commits.</p>
+        <p class="mt-3 text-xs sm:text-sm text-stone-warm dark:text-stone-warm-2 leading-relaxed max-w-lg">
+          A single Rust binary that audits every commit in your git log against the
+          <a href="https://www.conventionalcommits.org" target="_blank" rel="noopener" class="underline decoration-1 underline-offset-2 decoration-stone-warm/40 hover:decoration-coral-500 dark:hover:decoration-coral-400 transition-colors">Conventional Commits</a> spec.
+          No Node.js. No config file. No husky dance.
+        </p>
       </div>
 
-      <!-- Tool name -->
-      <h1 class="font-display font-extrabold tracking-tight text-6xl sm:text-7xl md:text-8xl leading-[0.9] text-cream animate-fade-up" style="animation-delay: 60ms;">
-        kagu
-      </h1>
+      <!-- Install tabs -->
+      <div id="install" class="flex border-t-2 border-charcoal/15 dark:border-white/15">
+        <button class="tab-btn flex-1 px-3 py-3 text-[10px] uppercase tracking-widest text-stone-warm dark:text-stone-warm-2 hover:bg-charcoal/5 dark:hover:bg-white/5 transition-colors border-r border-charcoal/10 dark:border-white/10 min-h-[44px]" data-tab="cargo" data-active="true" onclick="switchTab('cargo')">cargo</button>
+        <button class="tab-btn flex-1 px-3 py-3 text-[10px] uppercase tracking-widest text-stone-warm dark:text-stone-warm-2 hover:bg-charcoal/5 dark:hover:bg-white/5 transition-colors border-r border-charcoal/10 dark:border-white/10 min-h-[44px]" data-tab="git" onclick="switchTab('git')">git</button>
+        <button class="tab-btn flex-1 px-3 py-3 text-[10px] uppercase tracking-widest text-stone-warm dark:text-stone-warm-2 hover:bg-charcoal/5 dark:hover:bg-white/5 transition-colors border-r border-charcoal/10 dark:border-white/10 min-h-[44px]" data-tab="source" onclick="switchTab('source')">source</button>
+        <button class="tab-btn flex-1 px-3 py-3 text-[10px] uppercase tracking-widest text-stone-warm dark:text-stone-warm-2 hover:bg-charcoal/5 dark:hover:bg-white/5 transition-colors min-h-[44px]" data-tab="binary" onclick="switchTab('binary')">binary</button>
+      </div>
 
-      <!-- Tagline -->
-      <p class="mt-5 text-xl sm:text-2xl md:text-3xl font-display font-medium text-stone-warm-2 leading-snug animate-fade-up" style="animation-delay: 120ms;">
-        Screeches at bad <span class="text-sage-400">commits</span>.
-      </p>
-
-      <!-- Concrete description -->
-      <p class="mt-5 max-w-xl mx-auto text-base sm:text-lg text-stone-warm leading-relaxed animate-fade-up" style="animation-delay: 180ms;">
-        A single Rust binary that audits every commit in your git log against the Conventional Commits spec. No Node.js, no config file, no husky dance.
-      </p>
-
-      <!-- Install tabs + pill — THE HERO ANCHOR -->
-      <div class="mt-10 animate-fade-up" style="animation-delay: 240ms;">
-        <div role="tablist" aria-label="Install methods" class="flex flex-wrap items-center justify-center gap-1.5 mb-3">
-          <button role="tab" aria-selected="true" class="tab-btn min-h-[44px] text-[11px] sm:text-xs font-mono uppercase tracking-wider px-4 py-2.5 rounded-md border border-white/8 text-stone-warm transition-colors" data-tab="cargo" data-active="true" onclick="switchTab('cargo')">cargo</button>
-          <button role="tab" aria-selected="false" class="tab-btn min-h-[44px] text-[11px] sm:text-xs font-mono uppercase tracking-wider px-4 py-2.5 rounded-md border border-white/8 text-stone-warm transition-colors" data-tab="git" onclick="switchTab('git')">from git</button>
-          <button role="tab" aria-selected="false" class="tab-btn min-h-[44px] text-[11px] sm:text-xs font-mono uppercase tracking-wider px-4 py-2.5 rounded-md border border-white/8 text-stone-warm transition-colors" data-tab="source" onclick="switchTab('source')">from source</button>
-          <button role="tab" aria-selected="false" class="tab-btn min-h-[44px] text-[11px] sm:text-xs font-mono uppercase tracking-wider px-4 py-2.5 rounded-md border border-white/8 text-stone-warm transition-colors" data-tab="binary" onclick="switchTab('binary')">binary</button>
-        </div>
-
-        <div class="install-pill group relative mx-auto max-w-xl rounded-xl px-5 sm:px-6 py-4 sm:py-5 cursor-pointer transition-all duration-200"
-             onclick="copyInstall()"
-             role="button"
-             aria-label="Copy install command">
-          <div class="flex items-center gap-4">
-            <span class="text-stone-soft font-mono text-sm sm:text-base select-none" aria-hidden="true">$</span>
-            <code id="install-cmd" class="install-cmd-scroll flex-1 min-w-0 text-left font-mono text-base sm:text-xl md:text-2xl text-cream tracking-tight select-all">cargo install kagu</code>
-            <button type="button"
-                    onclick="event.stopPropagation(); copyInstall()"
-                    class="flex-shrink-0 p-2 rounded-md text-stone-warm hover:text-sage-400 hover:bg-sage-500/10 transition-colors"
-                    aria-label="Copy command">
-              <svg id="copy-icon" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-              </svg>
-              <svg id="check-icon" class="w-5 h-5 hidden text-sage-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                <polyline points="20 6 9 17 4 12"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <p class="mt-3 text-[11px] sm:text-xs font-mono text-stone-soft">
-          Click to copy · Cross-platform · <span class="text-sage-400">~1.1 MB binary</span>
-        </p>
+      <!-- Install command — THE HERO ANCHOR -->
+      <div class="flex items-center gap-3 px-5 sm:px-6 py-4 border-t border-charcoal/10 dark:border-white/10 cursor-pointer group"
+           onclick="copyInstall()" role="button" aria-label="Copy install command">
+        <span class="text-stone-warm dark:text-stone-warm-2 select-none" aria-hidden="true">$</span>
+        <code id="install-cmd" class="flex-1 text-sm sm:text-base md:text-lg lg:text-xl tracking-tight overflow-x-auto whitespace-nowrap scrollbar-hide select-all">cargo install kagu</code>
+        <button type="button" onclick="event.stopPropagation(); copyInstall()"
+                class="flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center text-[10px] uppercase tracking-widest text-stone-warm dark:text-stone-warm-2 hover:text-coral-500 dark:hover:text-coral-400 transition-colors"
+                aria-label="Copy command">
+          <span id="copy-label">copy</span>
+        </button>
       </div>
 
       <!-- CTAs -->
-      <div class="mt-10 flex flex-wrap items-center justify-center gap-3 animate-fade-up" style="animation-delay: 300ms;">
-        <a href="#quickstart"
-           class="inline-flex items-center gap-2 bg-sage-500 hover:bg-sage-400 text-charcoal font-semibold text-sm px-5 py-3 rounded-lg transition-all active:scale-[0.98] shadow-[0_8px_24px_-8px_rgba(94,145,104,0.6)]">
-          Read the Quick Start
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-            <path d="M5 12h14M13 5l7 7-7 7"/>
-          </svg>
+      <div class="flex border-t border-charcoal/10 dark:border-white/10">
+        <a href="#usage"
+           class="flex-1 flex items-center justify-center gap-2 px-4 py-3.5 text-[10px] uppercase tracking-widest font-bold bg-coral-500 dark:bg-coral-400 text-cream dark:text-charcoal hover:bg-coral-600 dark:hover:bg-coral-500 transition-colors min-h-[44px] active:scale-[0.98] border-r border-charcoal/10 dark:border-white/10">
+          see it run
+          <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
         </a>
         <a href="https://github.com/iamkorun/kagu" target="_blank" rel="noopener"
-           class="inline-flex items-center gap-2 border border-white/12 hover:border-white/25 hover:bg-white/5 text-cream font-medium text-sm px-4 py-3 rounded-lg transition-all">
-          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-          <span>iamkorun/kagu</span>
-          <span class="text-stone-warm-2 text-xs flex items-center gap-0.5 pl-2 border-l border-white/10">
-            <svg class="w-3.5 h-3.5 text-butter-400" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg>
-            <span id="star-count">★</span>
-          </span>
+           class="flex-1 flex items-center justify-center gap-2 px-4 py-3.5 text-[10px] uppercase tracking-widest text-stone-warm dark:text-stone-warm-2 hover:text-charcoal dark:hover:text-cream transition-colors min-h-[44px]">
+          <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg>
+          star <span id="star-count" class="text-coral-500 dark:text-coral-400"></span>
         </a>
       </div>
+    </section>
 
-    </div>
-  </section>
-
-  <!-- ═══════ WHAT IT DOES ═══════ -->
-  <section class="py-20 sm:py-28 border-t border-white/5">
-    <div class="max-w-5xl mx-auto px-6">
-      <div class="max-w-2xl mb-12 reveal">
-        <div class="text-xs font-mono uppercase tracking-widest text-sage-400 mb-3">Overview</div>
-        <h2 class="font-display font-bold text-3xl sm:text-4xl md:text-5xl text-cream tracking-tight leading-tight">
-          One binary, the whole audit.
-        </h2>
-        <p class="mt-4 text-base sm:text-lg text-stone-warm leading-relaxed">
-          Point <code class="font-mono text-sage-400">kagu scan</code> at any git repo and it walks the entire log, checks every commit against the Conventional Commits spec, scores it out of 100, and calls out exactly which messages break the rules — and why.
-        </p>
+    <!-- ═══ SHOW IT IN ACTION ═══ -->
+    <section id="usage" class="mt-8 border-2 border-charcoal/15 dark:border-white/15">
+      <div class="px-5 sm:px-6 py-3 border-b border-charcoal/10 dark:border-white/10 flex items-center justify-between">
+        <span class="text-[10px] uppercase tracking-widest text-coral-500 dark:text-coral-400">~/my-repo</span>
+        <button onclick="copyBlock('term-main', this)" class="text-[10px] uppercase tracking-widest text-stone-warm dark:text-stone-warm-2 hover:text-coral-500 dark:hover:text-coral-400 transition-colors px-2 py-1 min-h-[36px]">copy</button>
       </div>
+      <pre id="term-main" class="px-5 sm:px-6 py-5 overflow-x-auto text-xs sm:text-sm leading-[1.7] bg-cream-code dark:bg-charcoal-2"><span class="t-pr">$</span> <span class="t-kw">kagu</span> scan
 
-      <!-- Hero code sample -->
-      <div class="reveal rounded-2xl border border-white/8 bg-charcoal-3/50 overflow-hidden shadow-[0_20px_60px_-20px_rgba(0,0,0,0.5)]">
-        <!-- Terminal chrome -->
-        <div class="flex items-center gap-2 px-5 py-3 bg-charcoal-2/60 border-b border-white/5">
-          <span class="w-2.5 h-2.5 rounded-full bg-coral-400/70" aria-hidden="true"></span>
-          <span class="w-2.5 h-2.5 rounded-full bg-butter-400/70" aria-hidden="true"></span>
-          <span class="w-2.5 h-2.5 rounded-full bg-sage-400/70" aria-hidden="true"></span>
-          <span class="ml-3 text-[11px] font-mono text-stone-soft">~/my-repo</span>
-        </div>
-        <pre class="terminal px-5 sm:px-7 py-6 overflow-x-auto text-xs sm:text-sm"><span class="prompt">$</span> <span class="kw">kagu</span> scan
+<span class="t-bold">kagu scan</span>
 
-<span class="bold">kagu scan</span>
+  <span class="t-err">✗</span> <span class="t-dim">a1b2c3d</span>  WIP stuff happening
+      <span class="t-err">error</span> <span class="t-dim">[format]</span> subject does not match &#96;&lt;type&gt;(&lt;scope&gt;)?!?: &lt;description&gt;&#96;
+  <span class="t-warn">!</span> <span class="t-dim">d4e5f67</span>  feat: add database connection.
+      <span class="t-warn">warn </span> <span class="t-dim">[punctuation]</span> description should not end with &#96;.&#96;
+  <span class="t-err">✗</span> <span class="t-dim">7890abc</span>  release the thing
+      <span class="t-err">error</span> <span class="t-dim">[format]</span> subject does not match &#96;&lt;type&gt;(&lt;scope&gt;)?!?: &lt;description&gt;&#96;
 
-  <span class="error">✗</span> <span class="dim">a1b2c3d</span>  WIP stuff happening
-      <span class="error">error</span> <span class="dim">[format]</span> subject does not match &#96;&lt;type&gt;(&lt;scope&gt;)?!?: &lt;description&gt;&#96;
-  <span class="warn">!</span> <span class="dim">d4e5f67</span>  feat: add database connection.
-      <span class="warn">warn </span> <span class="dim">[punctuation]</span> description should not end with &#96;.&#96;
-  <span class="error">✗</span> <span class="dim">7890abc</span>  release the thing
-      <span class="error">error</span> <span class="dim">[format]</span> subject does not match &#96;&lt;type&gt;(&lt;scope&gt;)?!?: &lt;description&gt;&#96;
+<span class="t-bold">summary</span>
+  total: 24  <span class="t-ok">clean: 21</span>  <span class="t-warn">warnings: 1</span>  <span class="t-err">errors: 2</span>  <span class="t-dim">skipped: 1</span>
+  score: <span class="t-warn">87</span>/100
 
-<span class="bold">summary</span>
-  total: 24  <span class="clean">clean: 21</span>  <span class="warn">warnings: 1</span>  <span class="error">errors: 2</span>  <span class="dim">skipped: 1</span>
-  score: <span class="warn">87</span>/100
-
-<span class="bold">types</span>
+<span class="t-bold">types</span>
   chore       4
   feat        9
   fix         5
   refactor    3</pre>
+    </section>
+
+    <!-- ═══ WHY KAGU ═══ -->
+    <section class="mt-8 border-2 border-charcoal/15 dark:border-white/15">
+      <div class="px-5 sm:px-6 py-3 border-b-2 border-charcoal/15 dark:border-white/15">
+        <span class="text-[10px] uppercase tracking-widest text-coral-500 dark:text-coral-400">why kagu</span>
       </div>
-    </div>
-  </section>
-
-  <!-- ═══════ FEATURES ═══════ -->
-  <section class="py-20 sm:py-28 border-t border-white/5">
-    <div class="max-w-6xl mx-auto px-6">
-      <div class="text-center max-w-2xl mx-auto mb-16 reveal">
-        <div class="text-xs font-mono uppercase tracking-widest text-sage-400 mb-3">Features</div>
-        <h2 class="font-display font-bold text-3xl sm:text-4xl md:text-5xl text-cream tracking-tight">
-          Everything a commit auditor should do.
-        </h2>
-        <p class="mt-4 text-base sm:text-lg text-stone-warm leading-relaxed">
-          No plugins. No config. No runtime. Every feature in a single 1.1&nbsp;MB binary.
-        </p>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        <!-- Card 1 -->
-        <div class="feature-card rounded-2xl border border-white/8 bg-charcoal-2/40 p-6">
-          <div class="w-10 h-10 rounded-lg bg-sage-500/12 border border-sage-500/20 flex items-center justify-center mb-4">
-            <svg class="w-5 h-5 text-sage-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 7h18M6 12h12M9 17h6"/></svg>
+      <div class="grid grid-cols-1 sm:grid-cols-2">
+        <!-- Left column -->
+        <div class="sm:border-r border-charcoal/10 dark:border-white/10">
+          <div class="px-5 sm:px-6 py-4 border-b border-charcoal/10 dark:border-white/10">
+            <div class="text-[10px] uppercase tracking-widest text-coral-500 dark:text-coral-400 mb-1.5">01</div>
+            <div class="font-bold text-sm mb-1">Full history audit</div>
+            <p class="text-xs text-stone-warm dark:text-stone-warm-2 leading-relaxed">
+              Walks the entire git log, scores 0&ndash;100, flags every non-conforming commit with line-level reasons.
+            </p>
           </div>
-          <h3 class="font-display font-bold text-lg text-cream mb-1.5">Full history audit</h3>
-          <p class="text-sm text-stone-warm leading-relaxed">
-            Walks the entire git log, scores it 0–100, and flags every commit that breaks the spec — with line-level reasons.
-          </p>
+          <div class="px-5 sm:px-6 py-4 border-b border-charcoal/10 dark:border-white/10">
+            <div class="text-[10px] uppercase tracking-widest text-coral-500 dark:text-coral-400 mb-1.5">02</div>
+            <div class="font-bold text-sm mb-1">Branch-only CI</div>
+            <p class="text-xs text-stone-warm dark:text-stone-warm-2 leading-relaxed">
+              <code class="text-coral-500 dark:text-coral-400">--since main</code> audits only new commits. Zero noise from old history.
+            </p>
+          </div>
+          <div class="px-5 sm:px-6 py-4 border-b sm:border-b-0 border-charcoal/10 dark:border-white/10">
+            <div class="text-[10px] uppercase tracking-widest text-coral-500 dark:text-coral-400 mb-1.5">03</div>
+            <div class="font-bold text-sm mb-1">One-command hook</div>
+            <p class="text-xs text-stone-warm dark:text-stone-warm-2 leading-relaxed">
+              <code class="text-coral-500 dark:text-coral-400">kagu hook install</code> drops a commit-msg hook. Won't clobber an existing one.
+            </p>
+          </div>
         </div>
-
-        <!-- Card 2 -->
-        <div class="feature-card rounded-2xl border border-white/8 bg-charcoal-2/40 p-6">
-          <div class="w-10 h-10 rounded-lg bg-sage-500/12 border border-sage-500/20 flex items-center justify-center mb-4">
-            <svg class="w-5 h-5 text-sage-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3v12a3 3 0 0 0 3 3h6M6 3a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM18 15a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/></svg>
+        <!-- Right column -->
+        <div>
+          <div class="px-5 sm:px-6 py-4 border-b border-charcoal/10 dark:border-white/10">
+            <div class="text-[10px] uppercase tracking-widest text-coral-500 dark:text-coral-400 mb-1.5">04</div>
+            <div class="font-bold text-sm mb-1">Per-author breakdown</div>
+            <p class="text-xs text-stone-warm dark:text-stone-warm-2 leading-relaxed">
+              <code class="text-coral-500 dark:text-coral-400">--authors</code> surfaces who needs a refresher. Useful for onboarding audits.
+            </p>
           </div>
-          <h3 class="font-display font-bold text-lg text-cream mb-1.5">Branch-only CI scan</h3>
-          <p class="text-sm text-stone-warm leading-relaxed">
-            <code class="font-mono text-sage-400">--since origin/main</code> only audits new commits on your branch. Zero noise on old history.
-          </p>
-        </div>
-
-        <!-- Card 3 -->
-        <div class="feature-card rounded-2xl border border-white/8 bg-charcoal-2/40 p-6">
-          <div class="w-10 h-10 rounded-lg bg-sage-500/12 border border-sage-500/20 flex items-center justify-center mb-4">
-            <svg class="w-5 h-5 text-sage-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          <div class="px-5 sm:px-6 py-4 border-b border-charcoal/10 dark:border-white/10">
+            <div class="text-[10px] uppercase tracking-widest text-coral-500 dark:text-coral-400 mb-1.5">05</div>
+            <div class="font-bold text-sm mb-1">Machine-readable JSON</div>
+            <p class="text-xs text-stone-warm dark:text-stone-warm-2 leading-relaxed">
+              <code class="text-coral-500 dark:text-coral-400">--json</code> pipes a typed report into dashboards, scripts, or CI artifact reporters.
+            </p>
           </div>
-          <h3 class="font-display font-bold text-lg text-cream mb-1.5">One-command git hook</h3>
-          <p class="text-sm text-stone-warm leading-relaxed">
-            <code class="font-mono text-sage-400">kagu hook install</code> drops a commit-msg hook in place. Won't clobber an existing one.
-          </p>
-        </div>
-
-        <!-- Card 4 -->
-        <div class="feature-card rounded-2xl border border-white/8 bg-charcoal-2/40 p-6">
-          <div class="w-10 h-10 rounded-lg bg-sage-500/12 border border-sage-500/20 flex items-center justify-center mb-4">
-            <svg class="w-5 h-5 text-sage-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <div class="px-5 sm:px-6 py-4">
+            <div class="text-[10px] uppercase tracking-widest text-coral-500 dark:text-coral-400 mb-1.5">06</div>
+            <div class="font-bold text-sm mb-1">CI-friendly exit codes</div>
+            <p class="text-xs text-stone-warm dark:text-stone-warm-2 leading-relaxed">
+              Exits 0 on clean, 1 on errors, 2 on warnings with <code class="text-coral-500 dark:text-coral-400">--strict</code>. Drop it into any pipeline.
+            </p>
           </div>
-          <h3 class="font-display font-bold text-lg text-cream mb-1.5">Per-author breakdown</h3>
-          <p class="text-sm text-stone-warm leading-relaxed">
-            <code class="font-mono text-sage-400">--authors</code> surfaces who needs a refresher. Useful for onboarding audits and team retros.
-          </p>
-        </div>
-
-        <!-- Card 5 -->
-        <div class="feature-card rounded-2xl border border-white/8 bg-charcoal-2/40 p-6">
-          <div class="w-10 h-10 rounded-lg bg-sage-500/12 border border-sage-500/20 flex items-center justify-center mb-4">
-            <svg class="w-5 h-5 text-sage-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>
-          </div>
-          <h3 class="font-display font-bold text-lg text-cream mb-1.5">Machine-readable JSON</h3>
-          <p class="text-sm text-stone-warm leading-relaxed">
-            <code class="font-mono text-sage-400">--json</code> pipes a fully typed report into dashboards, scripts, or CI artifact reporters.
-          </p>
-        </div>
-
-        <!-- Card 6 -->
-        <div class="feature-card rounded-2xl border border-white/8 bg-charcoal-2/40 p-6">
-          <div class="w-10 h-10 rounded-lg bg-sage-500/12 border border-sage-500/20 flex items-center justify-center mb-4">
-            <svg class="w-5 h-5 text-sage-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-          </div>
-          <h3 class="font-display font-bold text-lg text-cream mb-1.5">CI-friendly exit codes</h3>
-          <p class="text-sm text-stone-warm leading-relaxed">
-            Exits 0 on clean, 1 on errors, 2 on warnings (with <code class="font-mono text-sage-400">--strict</code>). Drop it into any pipeline.
-          </p>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- ═══════ QUICK START ═══════ -->
-  <section id="quickstart" class="py-20 sm:py-28 border-t border-white/5 bg-charcoal-2/30">
-    <div class="max-w-4xl mx-auto px-6">
-      <div class="max-w-2xl mb-12 reveal">
-        <div class="text-xs font-mono uppercase tracking-widest text-sage-400 mb-3">Quick Start</div>
-        <h2 class="font-display font-bold text-3xl sm:text-4xl md:text-5xl text-cream tracking-tight leading-tight">
-          Install, scan, done.
-        </h2>
-        <p class="mt-4 text-base sm:text-lg text-stone-warm leading-relaxed">
-          Pick your install method and copy the command. No post-install, no config, no <code class="font-mono text-sage-400">husky</code>.
-        </p>
+    <!-- ═══ USAGE EXAMPLES ═══ -->
+    <section class="mt-8 border-2 border-charcoal/15 dark:border-white/15">
+      <div class="px-5 sm:px-6 py-3 border-b-2 border-charcoal/15 dark:border-white/15">
+        <span class="text-[10px] uppercase tracking-widest text-coral-500 dark:text-coral-400">examples</span>
       </div>
-
-      <!-- Install method panels -->
-      <div class="reveal space-y-5">
-        <!-- cargo -->
-        <div class="rounded-2xl border border-white/8 bg-charcoal-2/50 overflow-hidden">
-          <div class="flex items-center justify-between px-5 sm:px-6 py-3.5 bg-charcoal-2/60 border-b border-white/5">
-            <div class="flex items-center gap-2.5">
-              <span class="w-1.5 h-1.5 rounded-full bg-sage-400"></span>
-              <span class="text-sm font-mono text-cream">cargo</span>
-              <span class="text-xs text-stone-soft">— recommended</span>
-            </div>
-            <button onclick="copyBlock('qs-cargo', this)" class="min-h-[36px] text-xs font-mono text-stone-warm hover:text-sage-400 transition-colors px-3 py-2 rounded border border-white/8 hover:border-sage-500/35">
-              copy
-            </button>
-          </div>
-          <pre id="qs-cargo" class="terminal px-5 sm:px-6 py-5 overflow-x-auto text-xs sm:text-sm"><span class="dim"># Requires Rust &mdash; install at rustup.rs</span>
-<span class="prompt">$</span> cargo install kagu
-
-<span class="dim"># Audit every commit in the current repo</span>
-<span class="prompt">$</span> cd ~/my-repo
-<span class="prompt">$</span> kagu scan</pre>
-        </div>
-
-        <!-- from git -->
-        <div class="rounded-2xl border border-white/8 bg-charcoal-2/50 overflow-hidden">
-          <div class="flex items-center justify-between px-5 sm:px-6 py-3.5 bg-charcoal-2/60 border-b border-white/5">
-            <div class="flex items-center gap-2.5">
-              <span class="w-1.5 h-1.5 rounded-full bg-butter-400"></span>
-              <span class="text-sm font-mono text-cream">cargo from git</span>
-              <span class="text-xs text-stone-soft">— latest, no crates.io</span>
-            </div>
-            <button onclick="copyBlock('qs-git', this)" class="min-h-[36px] text-xs font-mono text-stone-warm hover:text-sage-400 transition-colors px-3 py-2 rounded border border-white/8 hover:border-sage-500/35">
-              copy
-            </button>
-          </div>
-          <pre id="qs-git" class="terminal px-5 sm:px-6 py-5 overflow-x-auto text-xs sm:text-sm"><span class="prompt">$</span> cargo install --git https://github.com/iamkorun/kagu</pre>
-        </div>
-
-        <!-- source -->
-        <div class="rounded-2xl border border-white/8 bg-charcoal-2/50 overflow-hidden">
-          <div class="flex items-center justify-between px-5 sm:px-6 py-3.5 bg-charcoal-2/60 border-b border-white/5">
-            <div class="flex items-center gap-2.5">
-              <span class="w-1.5 h-1.5 rounded-full bg-coral-400"></span>
-              <span class="text-sm font-mono text-cream">from source</span>
-            </div>
-            <button onclick="copyBlock('qs-source', this)" class="min-h-[36px] text-xs font-mono text-stone-warm hover:text-sage-400 transition-colors px-3 py-2 rounded border border-white/8 hover:border-sage-500/35">
-              copy
-            </button>
-          </div>
-          <pre id="qs-source" class="terminal px-5 sm:px-6 py-5 overflow-x-auto text-xs sm:text-sm"><span class="prompt">$</span> git clone https://github.com/iamkorun/kagu.git
-<span class="prompt">$</span> cd kagu
-<span class="prompt">$</span> cargo install --path .</pre>
-        </div>
-
-        <!-- binary -->
-        <div class="rounded-2xl border border-white/8 bg-charcoal-2/50 overflow-hidden">
-          <div class="flex items-center justify-between px-5 sm:px-6 py-3.5 bg-charcoal-2/60 border-b border-white/5">
-            <div class="flex items-center gap-2.5">
-              <span class="w-1.5 h-1.5 rounded-full bg-stone-warm-2"></span>
-              <span class="text-sm font-mono text-cream">pre-built binary</span>
-            </div>
-            <button onclick="copyBlock('qs-binary', this)" class="min-h-[36px] text-xs font-mono text-stone-warm hover:text-sage-400 transition-colors px-3 py-2 rounded border border-white/8 hover:border-sage-500/35">
-              copy
-            </button>
-          </div>
-          <pre id="qs-binary" class="terminal px-5 sm:px-6 py-5 overflow-x-auto text-xs sm:text-sm"><span class="dim"># Linux x86_64</span>
-<span class="prompt">$</span> curl -LO https://github.com/iamkorun/kagu/releases/latest/download/kagu-x86_64-linux.tar.gz
-<span class="prompt">$</span> tar -xzf kagu-x86_64-linux.tar.gz
-<span class="prompt">$</span> sudo mv kagu /usr/local/bin/</pre>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ═══════ REAL USAGE ═══════ -->
-  <section id="usage" class="py-20 sm:py-28 border-t border-white/5">
-    <div class="max-w-6xl mx-auto px-6">
-      <div class="max-w-2xl mb-12 reveal">
-        <div class="text-xs font-mono uppercase tracking-widest text-sage-400 mb-3">Usage</div>
-        <h2 class="font-display font-bold text-3xl sm:text-4xl md:text-5xl text-cream tracking-tight leading-tight">
-          Real commands, real output.
-        </h2>
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2">
         <!-- Branch-only CI -->
-        <div class="reveal rounded-2xl border border-white/8 bg-charcoal-3/40 overflow-hidden">
-          <div class="px-5 py-3.5 bg-charcoal-2/60 border-b border-white/5">
-            <div class="text-xs font-mono uppercase tracking-wider text-sage-400">Branch-only CI</div>
-            <div class="text-sm text-cream mt-0.5">Fail CI only on new violations</div>
+        <div class="lg:border-r border-charcoal/10 dark:border-white/10 border-b border-charcoal/10 dark:border-white/10">
+          <div class="px-5 sm:px-6 py-3 border-b border-charcoal/10 dark:border-white/10 flex items-center justify-between">
+            <div>
+              <div class="text-[10px] uppercase tracking-widest text-coral-500 dark:text-coral-400">branch-only ci</div>
+              <div class="text-xs text-stone-warm dark:text-stone-warm-2 mt-0.5">Fail CI only on new violations</div>
+            </div>
+            <button onclick="copyBlock('ex-branch', this)" class="text-[10px] uppercase tracking-widest text-stone-warm dark:text-stone-warm-2 hover:text-coral-500 dark:hover:text-coral-400 transition-colors px-2 py-1 min-h-[36px]">copy</button>
           </div>
-          <pre class="terminal px-5 py-5 overflow-x-auto"><span class="prompt">$</span> kagu scan --since main --quiet
-<span class="dim"># exit 0 &mdash; all clean</span>
+          <pre id="ex-branch" class="px-5 sm:px-6 py-4 overflow-x-auto text-xs leading-[1.7] bg-cream-code dark:bg-charcoal-2"><span class="t-pr">$</span> kagu scan --since main --quiet
+<span class="t-dim"># exit 0 — all clean</span>
 
-<span class="prompt">$</span> kagu scan --since origin/main
-<span class="bold">kagu scan</span>
+<span class="t-pr">$</span> kagu scan --since origin/main
+<span class="t-bold">kagu scan</span>
 
-  <span class="error">✗</span> <span class="dim">3fa9d12</span>  fix things
-      <span class="error">error</span> <span class="dim">[format]</span> subject does not match ...
+  <span class="t-err">✗</span> <span class="t-dim">3fa9d12</span>  fix things
+      <span class="t-err">error</span> <span class="t-dim">[format]</span> subject does not match ...
 
-  score: <span class="error">66</span>/100</pre>
+  score: <span class="t-err">66</span>/100</pre>
         </div>
 
         <!-- Per-author -->
-        <div class="reveal rounded-2xl border border-white/8 bg-charcoal-3/40 overflow-hidden">
-          <div class="px-5 py-3.5 bg-charcoal-2/60 border-b border-white/5">
-            <div class="text-xs font-mono uppercase tracking-wider text-sage-400">Per-author report</div>
-            <div class="text-sm text-cream mt-0.5">Surface who needs a refresher</div>
+        <div class="border-b border-charcoal/10 dark:border-white/10">
+          <div class="px-5 sm:px-6 py-3 border-b border-charcoal/10 dark:border-white/10 flex items-center justify-between">
+            <div>
+              <div class="text-[10px] uppercase tracking-widest text-coral-500 dark:text-coral-400">per-author report</div>
+              <div class="text-xs text-stone-warm dark:text-stone-warm-2 mt-0.5">Surface who needs a refresher</div>
+            </div>
+            <button onclick="copyBlock('ex-author', this)" class="text-[10px] uppercase tracking-widest text-stone-warm dark:text-stone-warm-2 hover:text-coral-500 dark:hover:text-coral-400 transition-colors px-2 py-1 min-h-[36px]">copy</button>
           </div>
-          <pre class="terminal px-5 py-5 overflow-x-auto"><span class="prompt">$</span> kagu scan --authors
+          <pre id="ex-author" class="px-5 sm:px-6 py-4 overflow-x-auto text-xs leading-[1.7] bg-cream-code dark:bg-charcoal-2"><span class="t-pr">$</span> kagu scan --authors
 
-<span class="bold">authors</span>
-  <span class="dim">author                    total  clean  errors  score</span>
-  ada.lovelace@ex.io          14     14       0  <span class="clean">100/100</span>
-  grace.hopper@ex.io           8      6       2   <span class="warn">75/100</span>
-  linus.t@ex.io                2      1       1   <span class="error">50/100</span></pre>
+<span class="t-bold">authors</span>
+  <span class="t-dim">author                    total  clean  errors  score</span>
+  ada.lovelace@ex.io          14     14       0  <span class="t-ok">100/100</span>
+  grace.hopper@ex.io           8      6       2   <span class="t-warn">75/100</span>
+  linus.t@ex.io                2      1       1   <span class="t-err">50/100</span></pre>
         </div>
 
         <!-- Git hook -->
-        <div class="reveal rounded-2xl border border-white/8 bg-charcoal-3/40 overflow-hidden">
-          <div class="px-5 py-3.5 bg-charcoal-2/60 border-b border-white/5">
-            <div class="text-xs font-mono uppercase tracking-wider text-sage-400">Commit-msg hook</div>
-            <div class="text-sm text-cream mt-0.5">Catch violations at commit time</div>
+        <div class="lg:border-r border-charcoal/10 dark:border-white/10 border-b lg:border-b-0 border-charcoal/10 dark:border-white/10">
+          <div class="px-5 sm:px-6 py-3 border-b border-charcoal/10 dark:border-white/10 flex items-center justify-between">
+            <div>
+              <div class="text-[10px] uppercase tracking-widest text-coral-500 dark:text-coral-400">commit-msg hook</div>
+              <div class="text-xs text-stone-warm dark:text-stone-warm-2 mt-0.5">Catch violations at commit time</div>
+            </div>
+            <button onclick="copyBlock('ex-hook', this)" class="text-[10px] uppercase tracking-widest text-stone-warm dark:text-stone-warm-2 hover:text-coral-500 dark:hover:text-coral-400 transition-colors px-2 py-1 min-h-[36px]">copy</button>
           </div>
-          <pre class="terminal px-5 py-5 overflow-x-auto"><span class="prompt">$</span> kagu hook install
+          <pre id="ex-hook" class="px-5 sm:px-6 py-4 overflow-x-auto text-xs leading-[1.7] bg-cream-code dark:bg-charcoal-2"><span class="t-pr">$</span> kagu hook install
 kagu: installed commit-msg hook at .git/hooks/commit-msg
 
-<span class="dim"># Now try committing a bad message:</span>
-<span class="prompt">$</span> git commit -m <span class="str">"fix things"</span>
+<span class="t-dim"># Now try committing a bad message:</span>
+<span class="t-pr">$</span> git commit -m <span class="t-str">"fix things"</span>
 kagu: commit message rejected
-  <span class="error">error</span> <span class="dim">[format]</span> subject does not match &#96;&lt;type&gt;...&#96;</pre>
+  <span class="t-err">error</span> <span class="t-dim">[format]</span> subject does not match &#96;&lt;type&gt;...&#96;</pre>
         </div>
 
         <!-- JSON output -->
-        <div class="reveal rounded-2xl border border-white/8 bg-charcoal-3/40 overflow-hidden">
-          <div class="px-5 py-3.5 bg-charcoal-2/60 border-b border-white/5">
-            <div class="text-xs font-mono uppercase tracking-wider text-sage-400">JSON output</div>
-            <div class="text-sm text-cream mt-0.5">Pipe into dashboards or CI reporters</div>
+        <div>
+          <div class="px-5 sm:px-6 py-3 border-b border-charcoal/10 dark:border-white/10 flex items-center justify-between">
+            <div>
+              <div class="text-[10px] uppercase tracking-widest text-coral-500 dark:text-coral-400">json output</div>
+              <div class="text-xs text-stone-warm dark:text-stone-warm-2 mt-0.5">Pipe into dashboards or CI reporters</div>
+            </div>
+            <button onclick="copyBlock('ex-json', this)" class="text-[10px] uppercase tracking-widest text-stone-warm dark:text-stone-warm-2 hover:text-coral-500 dark:hover:text-coral-400 transition-colors px-2 py-1 min-h-[36px]">copy</button>
           </div>
-          <pre class="terminal px-5 py-5 overflow-x-auto"><span class="prompt">$</span> kagu scan --json | jq .summary
+          <pre id="ex-json" class="px-5 sm:px-6 py-4 overflow-x-auto text-xs leading-[1.7] bg-cream-code dark:bg-charcoal-2"><span class="t-pr">$</span> kagu scan --json | jq .summary
 {
-  <span class="str">"total"</span>: 24,
-  <span class="str">"clean"</span>: <span class="clean">21</span>,
-  <span class="str">"warnings"</span>: <span class="warn">1</span>,
-  <span class="str">"errors"</span>: <span class="error">2</span>,
-  <span class="str">"skipped"</span>: 1,
-  <span class="str">"score"</span>: <span class="warn">87</span>
+  <span class="t-str">"total"</span>: 24,
+  <span class="t-str">"clean"</span>: <span class="t-ok">21</span>,
+  <span class="t-str">"warnings"</span>: <span class="t-warn">1</span>,
+  <span class="t-str">"errors"</span>: <span class="t-err">2</span>,
+  <span class="t-str">"skipped"</span>: 1,
+  <span class="t-str">"score"</span>: <span class="t-warn">87</span>
 }</pre>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- ═══════ COMPARISON ═══════ -->
-  <section class="py-20 sm:py-28 border-t border-white/5 bg-charcoal-2/30">
-    <div class="max-w-4xl mx-auto px-6">
-      <div class="text-center max-w-2xl mx-auto mb-12 reveal">
-        <div class="text-xs font-mono uppercase tracking-widest text-sage-400 mb-3">Comparison</div>
-        <h2 class="font-display font-bold text-3xl sm:text-4xl md:text-5xl text-cream tracking-tight">
-          Why not the other tools?
-        </h2>
+    <!-- ═══ COMPARISON ═══ -->
+    <section class="mt-8 border-2 border-charcoal/15 dark:border-white/15">
+      <div class="px-5 sm:px-6 py-3 border-b-2 border-charcoal/15 dark:border-white/15">
+        <span class="text-[10px] uppercase tracking-widest text-coral-500 dark:text-coral-400">vs alternatives</span>
       </div>
-
-      <div class="reveal overflow-x-auto rounded-2xl border border-white/8 bg-charcoal-3/40">
-        <table class="w-full font-mono text-sm border-collapse">
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs border-collapse">
           <thead>
-            <tr class="border-b border-white/8 bg-charcoal-2/40">
-              <th class="text-left py-4 px-5 text-stone-warm font-medium">Tool</th>
-              <th class="text-left py-4 px-5 text-stone-warm font-medium">Runtime</th>
-              <th class="text-left py-4 px-5 text-stone-warm font-medium">Config</th>
-              <th class="text-left py-4 px-5 text-stone-warm font-medium hidden sm:table-cell">Scope</th>
+            <tr class="border-b border-charcoal/10 dark:border-white/10 bg-cream-dim dark:bg-charcoal-2">
+              <th class="text-left py-3 px-5 sm:px-6 text-[10px] uppercase tracking-widest text-stone-warm dark:text-stone-warm-2 font-medium">Tool</th>
+              <th class="text-left py-3 px-4 text-[10px] uppercase tracking-widest text-stone-warm dark:text-stone-warm-2 font-medium">Runtime</th>
+              <th class="text-left py-3 px-4 text-[10px] uppercase tracking-widest text-stone-warm dark:text-stone-warm-2 font-medium">Config</th>
+              <th class="text-left py-3 px-4 text-[10px] uppercase tracking-widest text-stone-warm dark:text-stone-warm-2 font-medium hidden sm:table-cell">Hook</th>
+              <th class="text-left py-3 px-4 text-[10px] uppercase tracking-widest text-stone-warm dark:text-stone-warm-2 font-medium hidden sm:table-cell">Scope</th>
             </tr>
           </thead>
           <tbody>
-            <tr class="border-b border-white/5">
-              <td class="py-3.5 px-5 text-cream">commitlint</td>
-              <td class="py-3.5 px-5 text-coral-400">Node.js</td>
-              <td class="py-3.5 px-5 text-coral-400">husky + config</td>
-              <td class="py-3.5 px-5 text-stone-warm hidden sm:table-cell">Audit only</td>
+            <tr class="border-b border-charcoal/10 dark:border-white/10">
+              <td class="py-3 px-5 sm:px-6">commitlint</td>
+              <td class="py-3 px-4 text-coral-500 dark:text-coral-400">Node.js</td>
+              <td class="py-3 px-4 text-coral-500 dark:text-coral-400">husky + config</td>
+              <td class="py-3 px-4 text-coral-500 dark:text-coral-400 hidden sm:table-cell">3+ steps</td>
+              <td class="py-3 px-4 text-stone-warm dark:text-stone-warm-2 hidden sm:table-cell">per-commit</td>
             </tr>
-            <tr class="border-b border-white/5">
-              <td class="py-3.5 px-5 text-cream">cocogitto</td>
-              <td class="py-3.5 px-5 text-sage-400">Rust binary</td>
-              <td class="py-3.5 px-5 text-coral-400">TOML config</td>
-              <td class="py-3.5 px-5 text-stone-warm hidden sm:table-cell">Full release suite</td>
+            <tr class="border-b border-charcoal/10 dark:border-white/10">
+              <td class="py-3 px-5 sm:px-6">cocogitto</td>
+              <td class="py-3 px-4 text-sage-500 dark:text-sage-400">Rust binary</td>
+              <td class="py-3 px-4 text-coral-500 dark:text-coral-400">TOML config</td>
+              <td class="py-3 px-4 text-stone-warm dark:text-stone-warm-2 hidden sm:table-cell">manual</td>
+              <td class="py-3 px-4 text-stone-warm dark:text-stone-warm-2 hidden sm:table-cell">full suite</td>
             </tr>
-            <tr class="border-b border-white/5">
-              <td class="py-3.5 px-5 text-cream">gitlint</td>
-              <td class="py-3.5 px-5 text-coral-400">Python</td>
-              <td class="py-3.5 px-5 text-coral-400">.gitlint file</td>
-              <td class="py-3.5 px-5 text-stone-warm hidden sm:table-cell">Audit only</td>
+            <tr class="border-b border-charcoal/10 dark:border-white/10">
+              <td class="py-3 px-5 sm:px-6">gitlint</td>
+              <td class="py-3 px-4 text-coral-500 dark:text-coral-400">Python</td>
+              <td class="py-3 px-4 text-coral-500 dark:text-coral-400">.gitlint file</td>
+              <td class="py-3 px-4 text-stone-warm dark:text-stone-warm-2 hidden sm:table-cell">manual</td>
+              <td class="py-3 px-4 text-stone-warm dark:text-stone-warm-2 hidden sm:table-cell">per-commit</td>
             </tr>
-            <tr class="bg-sage-500/5">
-              <td class="py-3.5 px-5 font-bold text-cream">🐦 kagu</td>
-              <td class="py-3.5 px-5 text-sage-400">single binary</td>
-              <td class="py-3.5 px-5 text-sage-400">none</td>
-              <td class="py-3.5 px-5 text-stone-warm hidden sm:table-cell">Audit + hook</td>
+            <tr class="bg-coral-500/5 dark:bg-coral-400/5">
+              <td class="py-3 px-5 sm:px-6 font-bold">🐦 kagu</td>
+              <td class="py-3 px-4 text-sage-500 dark:text-sage-400">single binary</td>
+              <td class="py-3 px-4 text-sage-500 dark:text-sage-400">none</td>
+              <td class="py-3 px-4 text-sage-500 dark:text-sage-400 hidden sm:table-cell">1 cmd</td>
+              <td class="py-3 px-4 text-stone-warm dark:text-stone-warm-2 hidden sm:table-cell">audit + hook</td>
             </tr>
           </tbody>
         </table>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- ═══════ FOOTER CTA ═══════ -->
-  <section class="py-20 sm:py-24 border-t border-white/5">
-    <div class="max-w-3xl mx-auto px-6 text-center reveal">
-      <div class="text-4xl mb-4" aria-hidden="true">🐦</div>
-      <h2 class="font-display font-bold text-3xl sm:text-4xl text-cream tracking-tight">
-        Audit your repo in 10 seconds.
-      </h2>
-      <p class="mt-4 text-base sm:text-lg text-stone-warm leading-relaxed">
-        One command. No Node. No config. No runtime.
-      </p>
-      <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
+    <!-- ═══ INSTALL METHODS ═══ -->
+    <section id="quickstart" class="mt-8 border-2 border-charcoal/15 dark:border-white/15">
+      <div class="px-5 sm:px-6 py-3 border-b-2 border-charcoal/15 dark:border-white/15">
+        <span class="text-[10px] uppercase tracking-widest text-coral-500 dark:text-coral-400">install</span>
+      </div>
+
+      <!-- cargo -->
+      <div class="border-b border-charcoal/10 dark:border-white/10">
+        <div class="flex items-center justify-between px-5 sm:px-6 py-3 border-b border-charcoal/10 dark:border-white/10 bg-cream-dim dark:bg-charcoal-2">
+          <div class="flex items-center gap-2">
+            <span class="w-1.5 h-1.5 bg-sage-500 dark:bg-sage-400" aria-hidden="true"></span>
+            <span class="text-xs font-bold">cargo</span>
+            <span class="text-[10px] text-stone-warm dark:text-stone-warm-2">recommended</span>
+          </div>
+          <button onclick="copyBlock('qs-cargo', this)" class="text-[10px] uppercase tracking-widest text-stone-warm dark:text-stone-warm-2 hover:text-coral-500 dark:hover:text-coral-400 transition-colors px-2 py-1 min-h-[36px]">copy</button>
+        </div>
+        <pre id="qs-cargo" class="px-5 sm:px-6 py-4 overflow-x-auto text-xs leading-[1.7] bg-cream-code dark:bg-charcoal-2"><span class="t-dim"># Requires Rust — install at rustup.rs</span>
+<span class="t-pr">$</span> cargo install kagu
+
+<span class="t-dim"># Audit the current repo</span>
+<span class="t-pr">$</span> cd ~/my-repo
+<span class="t-pr">$</span> kagu scan</pre>
+      </div>
+
+      <!-- from git -->
+      <div class="border-b border-charcoal/10 dark:border-white/10">
+        <div class="flex items-center justify-between px-5 sm:px-6 py-3 border-b border-charcoal/10 dark:border-white/10 bg-cream-dim dark:bg-charcoal-2">
+          <div class="flex items-center gap-2">
+            <span class="w-1.5 h-1.5 bg-butter-500 dark:bg-butter-400" aria-hidden="true"></span>
+            <span class="text-xs font-bold">from git</span>
+            <span class="text-[10px] text-stone-warm dark:text-stone-warm-2">latest, no crates.io</span>
+          </div>
+          <button onclick="copyBlock('qs-git', this)" class="text-[10px] uppercase tracking-widest text-stone-warm dark:text-stone-warm-2 hover:text-coral-500 dark:hover:text-coral-400 transition-colors px-2 py-1 min-h-[36px]">copy</button>
+        </div>
+        <pre id="qs-git" class="px-5 sm:px-6 py-4 overflow-x-auto text-xs leading-[1.7] bg-cream-code dark:bg-charcoal-2"><span class="t-pr">$</span> cargo install --git https://github.com/iamkorun/kagu</pre>
+      </div>
+
+      <!-- source -->
+      <div class="border-b border-charcoal/10 dark:border-white/10">
+        <div class="flex items-center justify-between px-5 sm:px-6 py-3 border-b border-charcoal/10 dark:border-white/10 bg-cream-dim dark:bg-charcoal-2">
+          <div class="flex items-center gap-2">
+            <span class="w-1.5 h-1.5 bg-coral-500 dark:bg-coral-400" aria-hidden="true"></span>
+            <span class="text-xs font-bold">from source</span>
+          </div>
+          <button onclick="copyBlock('qs-source', this)" class="text-[10px] uppercase tracking-widest text-stone-warm dark:text-stone-warm-2 hover:text-coral-500 dark:hover:text-coral-400 transition-colors px-2 py-1 min-h-[36px]">copy</button>
+        </div>
+        <pre id="qs-source" class="px-5 sm:px-6 py-4 overflow-x-auto text-xs leading-[1.7] bg-cream-code dark:bg-charcoal-2"><span class="t-pr">$</span> git clone https://github.com/iamkorun/kagu.git
+<span class="t-pr">$</span> cd kagu
+<span class="t-pr">$</span> cargo install --path .</pre>
+      </div>
+
+      <!-- binary -->
+      <div>
+        <div class="flex items-center justify-between px-5 sm:px-6 py-3 border-b border-charcoal/10 dark:border-white/10 bg-cream-dim dark:bg-charcoal-2">
+          <div class="flex items-center gap-2">
+            <span class="w-1.5 h-1.5 bg-stone-warm dark:bg-stone-warm-2" aria-hidden="true"></span>
+            <span class="text-xs font-bold">pre-built binary</span>
+          </div>
+          <button onclick="copyBlock('qs-binary', this)" class="text-[10px] uppercase tracking-widest text-stone-warm dark:text-stone-warm-2 hover:text-coral-500 dark:hover:text-coral-400 transition-colors px-2 py-1 min-h-[36px]">copy</button>
+        </div>
+        <pre id="qs-binary" class="px-5 sm:px-6 py-4 overflow-x-auto text-xs leading-[1.7] bg-cream-code dark:bg-charcoal-2"><span class="t-dim"># Linux x86_64</span>
+<span class="t-pr">$</span> curl -LO https://github.com/iamkorun/kagu/releases/latest/download/kagu-x86_64-linux.tar.gz
+<span class="t-pr">$</span> tar -xzf kagu-x86_64-linux.tar.gz
+<span class="t-pr">$</span> sudo mv kagu /usr/local/bin/</pre>
+      </div>
+    </section>
+
+    <!-- ═══ FOOTER CTA ═══ -->
+    <section class="mt-8 border-2 border-charcoal/15 dark:border-white/15 p-6 sm:p-8 text-center">
+      <div class="text-2xl mb-3" aria-hidden="true">🐦</div>
+      <h2 class="font-bold text-xl sm:text-2xl tracking-tight">Audit your repo in 10 seconds.</h2>
+      <p class="mt-2 text-xs text-stone-warm dark:text-stone-warm-2">One command. No Node. No config. No runtime.</p>
+      <div class="mt-6 flex flex-wrap items-center justify-center gap-0">
         <a href="https://github.com/iamkorun/kagu" target="_blank" rel="noopener"
-           class="inline-flex items-center gap-2 bg-sage-500 hover:bg-sage-400 text-charcoal font-semibold text-sm px-5 py-3 rounded-lg transition-all active:scale-[0.98] shadow-[0_8px_24px_-8px_rgba(94,145,104,0.6)]">
-          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg>
-          Star on GitHub
+           class="flex items-center gap-2 px-5 py-3 text-[10px] uppercase tracking-widest font-bold bg-coral-500 dark:bg-coral-400 text-cream dark:text-charcoal hover:bg-coral-600 dark:hover:bg-coral-500 transition-colors min-h-[44px] active:scale-[0.98] border-2 border-coral-500 dark:border-coral-400">
+          <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg>
+          star on github
         </a>
         <a href="https://buymeacoffee.com/iamkorun" target="_blank" rel="noopener"
-           class="inline-flex items-center gap-2 bg-butter-500 hover:bg-butter-400 text-charcoal font-semibold text-sm px-5 py-3 rounded-lg transition-all active:scale-[0.98]">
-          ☕ Buy Me a Coffee
+           class="flex items-center gap-2 px-5 py-3 text-[10px] uppercase tracking-widest font-bold bg-butter-500 dark:bg-butter-400 text-charcoal hover:bg-butter-400 dark:hover:bg-butter-500 transition-colors min-h-[44px] active:scale-[0.98] border-2 border-butter-500 dark:border-butter-400">
+          ☕ buy me a coffee
         </a>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- ═══════ FOOTER ═══════ -->
-  <footer class="py-10 border-t border-white/5">
-    <div class="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-      <div class="flex items-center gap-4 text-sm text-stone-soft">
-        <a href="https://github.com/iamkorun/kagu" target="_blank" rel="noopener" class="hover:text-cream transition-colors flex items-center gap-1.5">
-          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+  </main>
+
+  <!-- ═══ FOOTER ═══ -->
+  <footer class="border-t-2 border-charcoal/15 dark:border-white/15 mt-8">
+    <div class="max-w-5xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div class="flex items-center gap-4 text-xs text-stone-warm dark:text-stone-warm-2">
+        <a href="https://github.com/iamkorun/kagu" target="_blank" rel="noopener" class="hover:text-charcoal dark:hover:text-cream transition-colors flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
           iamkorun/kagu
         </a>
         <span class="text-stone-soft/50">·</span>
-        <span class="text-stone-warm">MIT</span>
+        <span>MIT</span>
       </div>
-      <p class="text-sm text-stone-soft flex items-center gap-2">
+      <p class="text-xs text-stone-warm dark:text-stone-warm-2 flex items-center gap-2">
         <span aria-hidden="true">🐦</span>
-        Built by <a href="https://github.com/iamkorun" class="text-stone-warm-2 hover:text-cream transition-colors">iamkorun</a>
+        Built by <a href="https://github.com/iamkorun" class="hover:text-charcoal dark:hover:text-cream transition-colors">iamkorun</a>
       </p>
     </div>
   </footer>
 
-  <!-- ═══════ TOAST ═══════ -->
+  <!-- ═══ TOAST ═══ -->
   <div id="toast" class="toast" role="status" aria-live="polite">
-    <div class="flex items-center gap-2 bg-sage-500 text-charcoal font-mono text-sm font-semibold px-4 py-2.5 rounded-full shadow-lg">
-      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" aria-hidden="true">
-        <polyline points="20 6 9 17 4 12"/>
-      </svg>
+    <div class="flex items-center gap-2 bg-coral-500 dark:bg-coral-400 text-cream dark:text-charcoal text-xs font-bold px-4 py-2.5 border-2 border-coral-600 dark:border-coral-500">
+      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
       <span id="toast-text">Copied!</span>
     </div>
   </div>
 
-  <!-- ═══════ SCRIPTS ═══════ -->
+  <!-- ═══ SCRIPTS ═══ -->
   <script>
-    // ── Install commands per tab ─────────────────────────────────────
-    const INSTALL_CMDS = {
+    // Install commands per tab
+    var CMDS = {
       cargo:  'cargo install kagu',
       git:    'cargo install --git https://github.com/iamkorun/kagu',
       source: 'git clone https://github.com/iamkorun/kagu && cd kagu && cargo install --path .',
       binary: 'curl -LO https://github.com/iamkorun/kagu/releases/latest/download/kagu-x86_64-linux.tar.gz',
     };
+    var activeTab = 'cargo';
+    var toastTimer;
 
-    const installEl = document.getElementById('install-cmd');
-    const copyIcon = document.getElementById('copy-icon');
-    const checkIcon = document.getElementById('check-icon');
-    const toast = document.getElementById('toast');
-    const toastText = document.getElementById('toast-text');
-
-    let activeTab = 'cargo';
-    let toastTimer;
-
-    // ── Show toast ────────────────────────────────────────────────────
     function showToast(msg) {
-      if (toastText) toastText.textContent = msg;
-      toast.classList.add('show');
+      var t = document.getElementById('toast');
+      var tt = document.getElementById('toast-text');
+      if (tt) tt.textContent = msg;
+      t.classList.add('show');
       clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => {
-        toast.classList.remove('show');
-      }, 1800);
+      toastTimer = setTimeout(function() { t.classList.remove('show'); }, 1800);
     }
 
-    // ── Switch install tab ────────────────────────────────────────────
     function switchTab(tab) {
       activeTab = tab;
-      if (installEl) installEl.textContent = INSTALL_CMDS[tab] || INSTALL_CMDS.cargo;
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        const active = btn.dataset.tab === tab;
+      var el = document.getElementById('install-cmd');
+      if (el) el.textContent = CMDS[tab] || CMDS.cargo;
+      document.querySelectorAll('.tab-btn').forEach(function(btn) {
+        var active = btn.dataset.tab === tab;
         btn.dataset.active = active ? 'true' : 'false';
         btn.setAttribute('aria-selected', active ? 'true' : 'false');
       });
     }
 
-    // ── Copy install command from hero pill ──────────────────────────
     function copyInstall() {
-      const text = INSTALL_CMDS[activeTab] || INSTALL_CMDS.cargo;
-      copyToClipboard(text).then(() => {
-        if (copyIcon && checkIcon) {
-          copyIcon.classList.add('hidden');
-          checkIcon.classList.remove('hidden');
-          setTimeout(() => {
-            copyIcon.classList.remove('hidden');
-            checkIcon.classList.add('hidden');
-          }, 1800);
+      var text = CMDS[activeTab] || CMDS.cargo;
+      copyToClipboard(text).then(function() {
+        var label = document.getElementById('copy-label');
+        if (label) {
+          label.textContent = 'copied';
+          setTimeout(function() { label.textContent = 'copy'; }, 1800);
         }
-        showToast('Copied! ' + text.slice(0, 24) + (text.length > 24 ? '…' : ''));
+        showToast('Copied! ' + text.slice(0, 24) + (text.length > 24 ? '...' : ''));
       });
     }
 
-    // ── Copy from Quick Start code block ──────────────────────────────
-    function copyBlock(elId, btn) {
-      const block = document.getElementById(elId);
+    function copyBlock(id, btn) {
+      var block = document.getElementById(id);
       if (!block) return;
-      const text = block.textContent.replace(/^\$\s*/gm, '').trim();
-      copyToClipboard(text).then(() => {
-        const original = btn.textContent;
+      var text = block.textContent.replace(/^\$\s*/gm, '').trim();
+      copyToClipboard(text).then(function() {
+        var orig = btn.textContent;
         btn.textContent = 'copied';
-        btn.classList.add('text-sage-400');
-        setTimeout(() => {
-          btn.textContent = original;
-          btn.classList.remove('text-sage-400');
-        }, 1400);
+        setTimeout(function() { btn.textContent = orig; }, 1400);
         showToast('Copied!');
       });
     }
 
-    // ── Clipboard writer with fallback ────────────────────────────────
     function copyToClipboard(text) {
       if (navigator.clipboard && window.isSecureContext) {
         return navigator.clipboard.writeText(text);
       }
-      return new Promise((resolve) => {
-        const ta = document.createElement('textarea');
+      return new Promise(function(resolve) {
+        var ta = document.createElement('textarea');
         ta.value = text;
         ta.style.position = 'fixed';
         ta.style.top = '-9999px';
         document.body.appendChild(ta);
         ta.select();
-        try { document.execCommand('copy'); } catch (e) {}
+        try { document.execCommand('copy'); } catch (_) {}
         document.body.removeChild(ta);
         resolve();
       });
     }
 
-    // ── Fetch live GitHub star count (best-effort, fails silently) ───
-    (async function loadStars() {
-      const el = document.getElementById('star-count');
+    // Theme toggle
+    function toggleTheme() {
+      var html = document.documentElement;
+      var isDark = html.classList.contains('dark');
+      var btn = document.getElementById('theme-toggle');
+      if (isDark) {
+        html.classList.replace('dark', 'light');
+        localStorage.setItem('forge-theme', 'light');
+        if (btn) btn.setAttribute('aria-pressed', 'false');
+      } else {
+        html.classList.replace('light', 'dark');
+        localStorage.setItem('forge-theme', 'dark');
+        if (btn) btn.setAttribute('aria-pressed', 'true');
+      }
+    }
+
+    // GitHub star count (best-effort)
+    (function() {
+      var el = document.getElementById('star-count');
       if (!el) return;
-      try {
-        const res = await fetch('https://api.github.com/repos/iamkorun/kagu', { cache: 'no-store' });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (typeof data.stargazers_count === 'number') {
-          el.textContent = data.stargazers_count.toString();
-        }
-      } catch (_) { /* offline or rate-limited */ }
+      fetch('https://api.github.com/repos/iamkorun/kagu', { cache: 'no-store' })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(d) { if (d && typeof d.stargazers_count === 'number') el.textContent = d.stargazers_count; })
+        .catch(function() {});
     })();
   </script>
 
